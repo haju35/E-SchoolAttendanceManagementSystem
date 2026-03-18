@@ -17,6 +17,11 @@ return new class extends Migration
             $table->string('email')->unique();
             $table->timestamp('email_verified_at')->nullable();
             $table->string('password');
+            $table->string('role', 20)->default('student'); // Add role field
+            $table->string('phone', 20)->nullable()->unique(); // Add phone field
+            $table->text('address')->nullable(); // Add address field
+            $table->string('profile_photo')->nullable(); // Add profile photo field
+            $table->boolean('is_active')->default(true); // Add active status
             $table->rememberToken();
             $table->timestamps();
         });

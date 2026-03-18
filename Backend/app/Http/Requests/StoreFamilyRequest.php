@@ -5,7 +5,7 @@ namespace App\Http\Requests;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rules\Password;
 
-class StoreTeacherRequest extends FormRequest
+class StoreFamilyRequest extends FormRequest
 {
     public function authorize()
     {
@@ -23,10 +23,13 @@ class StoreTeacherRequest extends FormRequest
             'address' => 'nullable|string',
             'profile_photo' => 'nullable|image|max:2048',
             
-            // Teacher table fields
-            'employee_id' => 'required|string|max:50|unique:teachers,employee_id',
-            'qualification' => 'nullable|string',
-            'joining_date' => 'required|date',
+            // Family table fields
+            'occupation' => 'nullable|string|max:255',
+            'emergency_contact' => 'nullable|string|max:20',
+            
+            // Student relationships
+            'student_ids' => 'nullable|array',
+            'student_ids.*' => 'exists:students,id',
         ];
     }
 }
