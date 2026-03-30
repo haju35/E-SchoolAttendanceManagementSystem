@@ -1,65 +1,77 @@
 <?php
 
-namespace App\Http\Controllers;
+namespace App\Http\Controllers\Admin;
 
-use App\Models\ClassSubject;
+use App\Http\Controllers\Controller;
+use App\Models\ClassRoom;
+use App\Models\Subject;
 use Illuminate\Http\Request;
 
 class ClassSubjectController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     */
-    public function index()
+    public function getSubjects($classId)
     {
-        //
+        $class = ClassRoom::with('subjects')->findOrFail($classId);
+        
+        return response()->json([
+            'success' => true,
+            'data' => $class->subjects
+        ]);
     }
-
-    /**
-     * Show the form for creating a new resource.
-     */
-    public function create()
+    
+    public function assignSubject(Request $request, $classId)
     {
-        //
+        $request->validate([
+            'subject_id' => 'required|exists:subjects,id',
+            'is_compulsory' => 'boolean'
+        ]);
+        
+        $class = ClassRoom::findOrFail($classId);
+        
+        // Check if already assigned
+        if ($class->subjects()->where('subject_id', $request->subject_id)->exists()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Subject already assigned to this class'
+            ], 422);
+        }
+        
+        $class->subjects()->attach($request->subject_id, [
+            'is_compulsory' => $request->is_compulsory ?? true
+        ]);
+        
+        return response()->json([
+            'success' => true,
+            'message' => 'Subject assigned successfully'
+        ]);
     }
-
-    /**
-     * Store a newly created resource in storage.
-     */
-    public function store(Request $request)
+    
+    public function updateSubjectAssignment(Request $request, $classId, $subjectId)
     {
-        //
+        $request->validate([
+            'is_compulsory' => 'required|boolean'
+        ]);
+        
+        $class = ClassRoom::findOrFail($classId);
+        
+        $class->subjects()->updateExistingPivot($subjectId, [
+            'is_compulsory' => $request->is_compulsory
+        ]);
+        
+        return response()->json([
+            'success' => true,
+            'message' => 'Assignment updated successfully'
+        ]);
     }
-
-    /**
-     * Display the specified resource.
-     */
-    public function show(ClassSubject $classSubject)
+    
+    public function removeSubject($classId, $subjectId)
     {
-        //
-    }
-
-    /**
-     * Show the form for editing the specified resource.
-     */
-    public function edit(ClassSubject $classSubject)
-    {
-        //
-    }
-
-    /**
-     * Update the specified resource in storage.
-     */
-    public function update(Request $request, ClassSubject $classSubject)
-    {
-        //
-    }
-
-    /**
-     * Remove the specified resource from storage.
-     */
-    public function destroy(ClassSubject $classSubject)
-    {
-        //
+        $class = ClassRoom::findOrFail($classId);
+        $class->subjects()->detach($subjectId);
+        
+        return response()->json([
+            'success' => true,
+            'message' => 'Subject removed successfully'
+        ]);
     }
 }

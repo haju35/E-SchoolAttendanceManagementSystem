@@ -19,12 +19,12 @@ class TeacherAssignmentController extends Controller
      */
     public function index(Request $request)
     {
-        $assignments = TeacherAssignment::with(['teacher.user', 'subject', 'class', 'section'])
+        $assignments = TeacherAssignment::with(['teacher.user', 'subject', 'class_room', 'section'])
             ->when($request->teacher_id, function($query, $teacherId) {
                 $query->where('teacher_id', $teacherId);
             })
-            ->when($request->class_id, function($query, $classId) {
-                $query->where('class_id', $classId);
+            ->when($request->class_room_id, function($query, $classId) {
+                $query->where('class_room_id', $classId);
             })
             ->when($request->section_id, function($query, $sectionId) {
                 $query->where('section_id', $sectionId);
@@ -64,7 +64,7 @@ class TeacherAssignmentController extends Controller
         $request->validate([
             'teacher_id' => 'required|exists:teachers,id',
             'subject_id' => 'required|exists:subjects,id',
-            'class_id' => 'required|exists:class_rooms,id',
+            'class_room_id' => 'required|exists:class_rooms,id',
             'section_id' => 'required|exists:sections,id',
             'academic_year' => 'required|string|max:20'
         ]);
@@ -72,7 +72,7 @@ class TeacherAssignmentController extends Controller
         // Check if assignment already exists
         $exists = TeacherAssignment::where('teacher_id', $request->teacher_id)
             ->where('subject_id', $request->subject_id)
-            ->where('class_id', $request->class_id)
+            ->where('class_room_id', $request->class_room_id)
             ->where('section_id', $request->section_id)
             ->where('academic_year', $request->academic_year)
             ->exists();
@@ -86,7 +86,7 @@ class TeacherAssignmentController extends Controller
 
         // Check if another teacher is already assigned to this subject/class/section
         $otherAssignment = TeacherAssignment::where('subject_id', $request->subject_id)
-            ->where('class_id', $request->class_id)
+            ->where('class_room_id', $request->class_room_id)
             ->where('section_id', $request->section_id)
             ->where('academic_year', $request->academic_year)
             ->first();
@@ -104,7 +104,7 @@ class TeacherAssignmentController extends Controller
             $assignment = TeacherAssignment::create([
                 'teacher_id' => $request->teacher_id,
                 'subject_id' => $request->subject_id,
-                'class_id' => $request->class_id,
+                'class_room_id' => $request->class_room_id,
                 'section_id' => $request->section_id,
                 'academic_year' => $request->academic_year
             ]);
@@ -114,7 +114,7 @@ class TeacherAssignmentController extends Controller
             return response()->json([
                 'success' => true,
                 'message' => 'Teacher assigned successfully',
-                'data' => $assignment->load(['teacher.user', 'subject', 'class', 'section'])
+                'data' => $assignment->load(['teacher.user', 'subject', 'class_room', 'section'])
             ], 201);
 
         } catch (\Exception $e) {
@@ -132,7 +132,7 @@ class TeacherAssignmentController extends Controller
      */
     public function show(TeacherAssignment $teacherAssignment)
     {
-        $teacherAssignment->load(['teacher.user', 'subject', 'class', 'section']);
+        $teacherAssignment->load(['teacher.user', 'subject', 'class_room', 'section']);
 
         return response()->json([
             'success' => true,
@@ -160,16 +160,16 @@ class TeacherAssignmentController extends Controller
         $request->validate([
             'teacher_id' => 'sometimes|exists:teachers,id',
             'subject_id' => 'sometimes|exists:subjects,id',
-            'class_id' => 'sometimes|exists:class_rooms,id',
+            'class_room_id' => 'sometimes|exists:class_rooms,id',
             'section_id' => 'sometimes|exists:sections,id',
             'academic_year' => 'sometimes|string|max:20'
         ]);
 
         // Check for duplicates if changing key fields
-        if ($request->hasAny(['teacher_id', 'subject_id', 'class_id', 'section_id', 'academic_year'])) {
+        if ($request->hasAny(['teacher_id', 'subject_id', 'class_room_id', 'section_id', 'academic_year'])) {
             $exists = TeacherAssignment::where('teacher_id', $request->teacher_id ?? $teacherAssignment->teacher_id)
                 ->where('subject_id', $request->subject_id ?? $teacherAssignment->subject_id)
-                ->where('class_id', $request->class_id ?? $teacherAssignment->class_id)
+                ->where('class_room_id', $request->class_room_id ?? $teacherAssignment->class_room_id)
                 ->where('section_id', $request->section_id ?? $teacherAssignment->section_id)
                 ->where('academic_year', $request->academic_year ?? $teacherAssignment->academic_year)
                 ->where('id', '!=', $teacherAssignment->id)
@@ -187,7 +187,7 @@ class TeacherAssignmentController extends Controller
 
         try {
             $teacherAssignment->update($request->only([
-                'teacher_id', 'subject_id', 'class_id', 'section_id', 'academic_year'
+                'teacher_id', 'subject_id', 'class_room_id', 'section_id', 'academic_year'
             ]));
 
             DB::commit();
@@ -216,7 +216,7 @@ class TeacherAssignmentController extends Controller
         // Check if there are any attendance records using this assignment
         $attendanceCount = $teacherAssignment->teacher->attendances()
             ->where('subject_id', $teacherAssignment->subject_id)
-            ->where('class_id', $teacherAssignment->class_id)
+            ->where('class_room_id', $teacherAssignment->class_room_id)
             ->where('section_id', $teacherAssignment->section_id)
             ->count();
 
@@ -262,7 +262,7 @@ class TeacherAssignmentController extends Controller
         $academicYear = $request->academic_year ?? date('Y');
 
         $assignments = TeacherAssignment::with(['teacher.user', 'subject'])
-            ->where('class_id', $classId)
+            ->where('class_room_id', $classId)
             ->where('section_id', $request->section_id)
             ->where('academic_year', $academicYear)
             ->get();

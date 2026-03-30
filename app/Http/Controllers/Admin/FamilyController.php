@@ -8,6 +8,7 @@ use App\Http\Requests\UpdateFamilyRequest;
 use App\Models\User;
 use App\Models\Family;
 use App\Models\Student;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\DB;
 

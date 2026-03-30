@@ -23,19 +23,28 @@ class AttendanceController extends Controller
         $subjects = Subject::all();
         $date = $request->date ?? date('Y-m-d');
         
-        if($request->class_id && $request->section_id) {
-            $students = Student::where('current_class_id', $request->class_id)
+        if($request->class_room_id && $request->section_id) {
+            $students = Student::where('current_class_id', $request->class_room_id)
                 ->where('current_section_id', $request->section_id)
                 ->get();
         }
         
-        return view('teacher.attendance.index', compact('classes', 'students', 'subjects', 'date'));
+        //return view('teacher.attendance.index', compact('classes', 'students', 'subjects', 'date'));
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'classes' => $classes,
+                'students' => $students,
+                'subjects' => $subjects,
+                'date' => $date
+            ]
+]);
     }
     
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'class_id' => 'required',
+            'class_room_id' => 'required',
             'section_id' => 'required',
             'date' => 'required|date',
             'attendance' => 'required|array'
@@ -52,7 +61,7 @@ class AttendanceController extends Controller
                         'subject_id' => $data['subject_id']
                     ],
                     [
-                        'class_id' => $request->class_id,
+                        'class_room_id' => $request->class_id,
                         'section_id' => $request->section_id,
                         'teacher_id' => Auth::user()->teacher->id,
                         'status' => $data['status'],

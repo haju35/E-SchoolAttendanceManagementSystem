@@ -146,6 +146,12 @@ Route::middleware(['auth:api', 'admin'])->prefix('admin')->group(function () {
     // System Configuration
     Route::get('/config', [SystemConfigController::class, 'index']);
     Route::put('/config', [SystemConfigController::class, 'update']);
+
+    // Subject assignments routes
+    Route::get('/classes/{classId}/subjects', [ClassSubjectController::class, 'getSubjects']);
+    Route::post('/classes/{classId}/subjects', [ClassSubjectController::class, 'assignSubject']);
+    Route::put('/classes/{classId}/subjects/{subjectId}', [ClassSubjectController::class, 'updateSubjectAssignment']);
+    Route::delete('/classes/{classId}/subjects/{subjectId}', [ClassSubjectController::class, 'removeSubject']);
 });
 
 // ========== TEACHER PANEL ==========

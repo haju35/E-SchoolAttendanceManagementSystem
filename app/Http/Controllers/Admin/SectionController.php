@@ -10,9 +10,9 @@ class SectionController extends Controller
 {
     public function index(Request $request)
     {
-        $sections = Section::with('classRooms')
+        $sections = Section::with('classRoom')
             ->when($request->class_id, function($query, $classId) {
-                $query->where('class_id', $classId);
+                $query->where('class_room_id', $classId);
             })
             ->get();
 
@@ -25,7 +25,7 @@ class SectionController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'class_id' => 'required|exists:class_rooms,id',
+            'class_room_id' => 'required|exists:class_rooms,id',
             'name' => 'required|string|max:50',
             'capacity' => 'nullable|integer|min:1'
         ]);
@@ -35,13 +35,13 @@ class SectionController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Section created successfully',
-            'data' => $section->load('classRooms')
+            'data' => $section->load('classRoom')
         ], 201);
     }
 
     public function show($id)
     {
-        $section = Section::with(['classRooms', 'students'])->find($id);
+        $section = Section::with(['classRoom', 'students'])->find($id);
         
         if (!$section) {
             return response()->json([
@@ -77,7 +77,7 @@ class SectionController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Section updated successfully',
-            'data' => $section->load('classRooms')
+            'data' => $section->load('classRoom')
         ]);
     }
 

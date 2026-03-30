@@ -10,7 +10,7 @@ class TeacherAssignment extends Model
     use HasFactory;
 
     protected $fillable = [
-        'teacher_id', 'subject_id', 'class_id', 'section_id', 'academic_year'
+        'teacher_id', 'subject_id', 'class_room_id', 'section_id', 'academic_year'
     ];
 
     public function teacher()
@@ -23,7 +23,7 @@ class TeacherAssignment extends Model
         return $this->belongsTo(Subject::class);
     }
 
-    public function class()
+    public function class_room()
     {
         return $this->belongsTo(ClassRoom::class);
     }

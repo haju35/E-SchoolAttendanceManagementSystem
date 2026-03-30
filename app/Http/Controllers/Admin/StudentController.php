@@ -15,32 +15,13 @@ class StudentController extends Controller
 {
     public function index(Request $request)
     {
-        $query = Student::with(['user', 'currentClass', 'currentSection', 'family']);
-        
-        // Filter by class
-        if ($request->has('class_id')) {
-            $query->where('current_class_id', $request->class_id);
-        }
-        
-        // Filter by section
-        if ($request->has('section_id')) {
-            $query->where('current_section_id', $request->section_id);
-        }
-        
-        // Search by name or admission number
-        if ($request->has('search')) {
-            $search = $request->search;
-            $query->where(function($q) use ($search) {
-                $q->where('admission_number', 'LIKE', "%{$search}%")
-                  ->orWhereHas('user', function($userQuery) use ($search) {
-                      $userQuery->where('name', 'LIKE', "%{$search}%")
-                                ->orWhere('email', 'LIKE', "%{$search}%");
-                  });
-            });
-        }
-        
-        $students = $query->paginate(15);
-        
+        $students = Student::with([
+            'user',
+            'currentClass:id,name',
+            'currentSection:id,name'
+        ])
+        ->paginate(15);
+
         return response()->json([
             'success' => true,
             'data' => $students

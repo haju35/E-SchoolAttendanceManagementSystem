@@ -8,6 +8,7 @@ use App\Http\Requests\UpdateTeacherRequest;
 use App\Models\User;
 use App\Models\Teacher;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
 class TeacherController extends Controller

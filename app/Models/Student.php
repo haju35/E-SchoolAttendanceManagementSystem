@@ -11,7 +11,7 @@ class Student extends Model
     use HasFactory;
 
     protected $fillable = [
-        'user_id', 'parent_id', 'admission_number', 'roll_number',
+        'user_id', 'family_id', 'admission_number', 'roll_number',
         'date_of_birth', 'gender', 'current_class_id', 'current_section_id',
         'admission_date', 'status'
     ];
@@ -32,7 +32,7 @@ class Student extends Model
     }
     public function currentClass()
     {
-        return $this->belongsTo(classRoom::class, 'current_class_id');
+        return $this->belongsTo(ClassRoom::class, 'current_class_id');
     }
     public function currentSection()
     {
@@ -42,6 +42,16 @@ class Student extends Model
     public function attendances()
     {
         return $this->hasMany(Attendance::class);
+    }
+
+     public function getClassNameAttribute()
+    {
+        return $this->currentClass ? $this->currentClass->name : 'N/A';
+    }
+
+    public function getSectionNameAttribute()
+    {
+        return $this->currentSection ? $this->currentSection->name : 'N/A';
     }
 }
 

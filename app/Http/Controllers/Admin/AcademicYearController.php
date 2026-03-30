@@ -103,12 +103,10 @@ class AcademicYearController extends Controller
             ], 404);
         }
 
-        // Don't allow deletion of current academic year
+        // If it's current, unset it first
         if ($academicYear->is_current) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Cannot delete current academic year'
-            ], 400);
+            $academicYear->is_current = false;
+            $academicYear->save();
         }
 
         $academicYear->delete();

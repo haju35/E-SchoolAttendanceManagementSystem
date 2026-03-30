@@ -71,7 +71,8 @@ class LoginController extends Controller
                 ], 403);
             }
 
-            $token = $user->createToken('auth_token')->accessToken;
+            $tokenResult = $user->createToken('auth_token');
+            $token = $tokenResult->accessToken;
 
             return response()->json([
                 'success' => true,

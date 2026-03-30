@@ -13,11 +13,11 @@ return new class extends Migration
     {
         Schema::create('class_subjects', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('class_id')->constrained('class_rooms')->onDelete('cascade');;
+            $table->foreignId('class_room_id')->constrained('class_rooms')->onDelete('cascade');;
             $table->foreignId('subject_id')->constrained()->onDelete('cascade');;
             $table->boolean('is_compulsory')->default(true);;
             $table->timestamps();
-            $table->unique(['class_id', 'subject_id']);
+            $table->unique(['class_room_id', 'subject_id']);
         });
     }
 
