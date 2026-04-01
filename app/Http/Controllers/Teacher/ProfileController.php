@@ -12,7 +12,7 @@ class ProfileController extends Controller
         $teacher = $request->user()->teacher->load([
             'user',
             'assignments.subject',
-            'assignments.class',
+            'assignments.classRoom',
             'assignments.section'
         ]);
 

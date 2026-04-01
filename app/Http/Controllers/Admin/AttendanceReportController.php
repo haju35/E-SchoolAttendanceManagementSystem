@@ -15,17 +15,17 @@ class AttendanceReportController extends Controller
     {
         $request->validate([
             'date' => 'sometimes|date',
-            'class_id' => 'nullable|exists:class_rooms,id',
+            'class_room_id' => 'nullable|exists:class_rooms,id',
             'section_id' => 'nullable|exists:sections,id'
         ]);
 
         $date = $request->date ? Carbon::parse($request->date) : Carbon::today();
 
-        $query = Attendance::with(['student.user', 'class', 'section', 'subject', 'teacher.user'])
+        $query = Attendance::with(['student.user', 'classRoom', 'section', 'subject', 'teacher.user'])
             ->whereDate('date', $date);
 
-        if ($request->class_id) {
-            $query->where('class_id', $request->class_id);
+        if ($request->class_room_id) {
+            $query->where('class_room_id', $request->class_room_id);
         }
 
         if ($request->section_id) {
@@ -43,7 +43,7 @@ class AttendanceReportController extends Controller
                 'absent' => $attendances->where('status', 'absent')->count(),
                 'late' => $attendances->where('status', 'late')->count()
             ],
-            'by_class' => $attendances->groupBy('class_id')->map(function($items) {
+            'by_class' => $attendances->groupBy('class_room_id')->map(function($items) {
                 return [
                     'class' => $items->first()->class->name ?? 'N/A',
                     'total' => $items->count(),
@@ -64,17 +64,17 @@ class AttendanceReportController extends Controller
         $request->validate([
             'month' => 'required|integer|between:1,12',
             'year' => 'required|integer|min:2000',
-            'class_id' => 'nullable|exists:class_rooms,id'
+            'class_room_id' => 'nullable|exists:class_rooms,id'
         ]);
 
         $startDate = Carbon::create($request->year, $request->month, 1)->startOfMonth();
         $endDate = Carbon::create($request->year, $request->month, 1)->endOfMonth();
 
-        $query = Attendance::with(['student.user', 'class', 'section'])
+        $query = Attendance::with(['student.user', 'classRoom', 'section'])
             ->whereBetween('date', [$startDate, $endDate]);
 
-        if ($request->class_id) {
-            $query->where('class_id', $request->class_id);
+        if ($request->class_room_id) {
+            $query->where('class_room_id', $request->class_room_id);
         }
 
         $attendances = $query->get();
@@ -105,9 +105,9 @@ class AttendanceReportController extends Controller
                 'late' => $attendances->where('status', 'late')->count()
             ],
             'daily_breakdown' => $dailySummary,
-            'class_breakdown' => $attendances->groupBy('class_id')->map(function($items) {
+            'class_breakdown' => $attendances->groupBy('class_room_id')->map(function($items) {
                 return [
-                    'class' => $items->first()->class->name ?? 'N/A',
+                    'classRoom' => $items->first()->class->name ?? 'N/A',
                     'total' => $items->count(),
                     'present' => $items->where('status', 'present')->count(),
                     'absent' => $items->where('status', 'absent')->count(),
@@ -200,7 +200,7 @@ class AttendanceReportController extends Controller
         $date = $request->date ? Carbon::parse($request->date) : Carbon::today();
 
         $attendances = Attendance::with(['student.user', 'section', 'subject'])
-            ->where('class_id', $id)
+            ->where('class_room_id', $id)
             ->whereDate('date', $date)
             ->get();
 

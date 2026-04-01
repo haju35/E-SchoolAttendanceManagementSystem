@@ -11,7 +11,7 @@ class SectionController extends Controller
     public function index(Request $request)
     {
         $sections = Section::with('classRoom')
-            ->when($request->class_id, function($query, $classId) {
+            ->when($request->class_room_id, function($query, $classId) {
                 $query->where('class_room_id', $classId);
             })
             ->get();

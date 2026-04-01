@@ -21,8 +21,8 @@ class ClassController extends Controller
             ], 404);
         }
 
-        // Get all assignments for this teacher
-        $assignments = TeacherAssignment::with(['class', 'section', 'subject'])
+        // Get all assignments for this teacher with relationships
+        $assignments = TeacherAssignment::with(['classRoom', 'section', 'subject'])
             ->where('teacher_id', $teacher->id)
             ->get();
 
@@ -34,9 +34,9 @@ class ClassController extends Controller
             ]);
         }
 
-        // Group by class - using Collection methods (CORRECT)
-        $groupedClasses = $assignments->groupBy('class_id')->map(function($classItems) {
-            $class = $classItems->first()->class;
+        // Group by class_room_id (not class_id)
+        $groupedClasses = $assignments->groupBy('class_room_id')->map(function($classItems) {
+            $classRoom = $classItems->first()->classRoom;
             
             // Group by section within each class
             $sections = $classItems->groupBy('section_id')->map(function($sectionItems) {
@@ -60,9 +60,9 @@ class ClassController extends Controller
 
             return [
                 'class' => [
-                    'id' => $class->id,
-                    'name' => $class->name,
-                    'numeric_value' => $class->numeric_value
+                    'id' => $classRoom->id,
+                    'name' => $classRoom->name,
+                    'numeric_value' => $classRoom->numeric_value
                 ],
                 'sections' => $sections
             ];
@@ -90,9 +90,9 @@ class ClassController extends Controller
             'section_id' => 'required|exists:sections,id'
         ]);
 
-        // Verify teacher has access to this class/section
+        // Verify teacher has access to this class/section - FIX: use class_room_id
         $hasAccess = TeacherAssignment::where('teacher_id', $teacher->id)
-            ->where('class_id', $classId)
+            ->where('class_room_id', $classId)  // Changed from class_id to class_room_id
             ->where('section_id', $request->section_id)
             ->exists();
 
@@ -145,13 +145,13 @@ class ClassController extends Controller
         $sectionInfo = null;
         
         $assignment = TeacherAssignment::where('teacher_id', $teacher->id)
-            ->where('class_id', $classId)
+            ->where('class_room_id', $classId)  // Changed from class_id to class_room_id
             ->where('section_id', $request->section_id)
-            ->with(['class', 'section'])
+            ->with(['classRoom', 'section'])
             ->first();
             
         if ($assignment) {
-            $classInfo = $assignment->class;
+            $classInfo = $assignment->classRoom;
             $sectionInfo = $assignment->section;
         }
 

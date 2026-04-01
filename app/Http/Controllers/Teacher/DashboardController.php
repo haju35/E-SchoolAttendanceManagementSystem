@@ -22,7 +22,7 @@ class DashboardController extends Controller
             }
             
             // Get all assignments
-            $assignments = TeacherAssignment::with(['class', 'section', 'subject'])
+            $assignments = TeacherAssignment::with(['classRoom', 'section', 'subject'])
                 ->where('teacher_id', $teacher->id)
                 ->get();
             
@@ -32,9 +32,9 @@ class DashboardController extends Controller
             // Calculate total students
             $totalStudents = 0;
             foreach ($assignments->unique(function($item) {
-                return $item->class_id . '-' . $item->section_id;
+                return $item->class_room_id . '-' . $item->section_id;
             }) as $assignment) {
-                $totalStudents += $assignment->class->students()
+                $totalStudents += $assignment->classRoom->students()
                     ->where('current_section_id', $assignment->section_id)
                     ->count();
             }
@@ -49,8 +49,8 @@ class DashboardController extends Controller
             
             // Prepare classes data for frontend
             $myClasses = [];
-            foreach ($assignments->groupBy('class_id') as $classId => $classAssignments) {
-                $class = $classAssignments->first()->class;
+            foreach ($assignments->groupBy('class_room_id') as $classId => $classAssignments) {
+                $class = $classAssignments->first()->classRoom;
                 $sections = [];
                 
                 foreach ($classAssignments->groupBy('section_id') as $sectionId => $sectionAssignments) {

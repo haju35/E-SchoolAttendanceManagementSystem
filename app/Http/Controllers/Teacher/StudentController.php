@@ -35,7 +35,7 @@ class StudentController extends Controller
 
         // Check if teacher has access to this student's class
         $hasAccess = TeacherAssignment::where('teacher_id', $teacher->id)
-            ->where('class_id', $student->current_class_id)
+            ->where('class_room_id', $student->current_class_id)
             ->where('section_id', $student->current_section_id)
             ->exists();
 
@@ -48,7 +48,7 @@ class StudentController extends Controller
 
         // Calculate attendance statistics for subjects this teacher teaches
         $subjectIds = TeacherAssignment::where('teacher_id', $teacher->id)
-            ->where('class_id', $student->current_class_id)
+            ->where('class_room_id', $student->current_class_id)
             ->where('section_id', $student->current_section_id)
             ->pluck('subject_id');
 

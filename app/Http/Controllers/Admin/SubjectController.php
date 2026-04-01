@@ -10,7 +10,7 @@ class SubjectController extends Controller
 {
     public function index()
     {
-        $subjects = Subject::with('classes')->get();
+        $subjects = Subject::with('classRoom')->get();
 
         return response()->json([
             'success' => true,
@@ -36,7 +36,7 @@ class SubjectController extends Controller
 
     public function show($id)
     {
-        $subject = Subject::with(['classes', 'teacherAssignments.teacher.user'])->find($id);
+        $subject = Subject::with(['classRoom', 'teacherAssignments.teacher.user'])->find($id);
         
         if (!$subject) {
             return response()->json([

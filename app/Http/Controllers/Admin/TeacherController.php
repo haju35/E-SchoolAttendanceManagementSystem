@@ -77,7 +77,7 @@ class TeacherController extends Controller
 
     public function show($id)
     {
-        $teacher = Teacher::with(['user', 'assignments.subject', 'assignments.class', 'assignments.section'])
+        $teacher = Teacher::with(['user', 'assignments.subject', 'assignments.classRoom', 'assignments.section'])
             ->find($id);
         
         if (!$teacher) {

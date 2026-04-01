@@ -23,7 +23,7 @@ class TeacherAssignment extends Model
         return $this->belongsTo(Subject::class);
     }
 
-    public function class_room()
+    public function classRoom()
     {
         return $this->belongsTo(ClassRoom::class);
     }

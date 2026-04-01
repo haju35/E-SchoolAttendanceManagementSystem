@@ -19,7 +19,7 @@ class TeacherAssignmentController extends Controller
      */
     public function index(Request $request)
     {
-        $assignments = TeacherAssignment::with(['teacher.user', 'subject', 'class_room', 'section'])
+        $assignments = TeacherAssignment::with(['teacher.user', 'subject', 'classRoom', 'section'])
             ->when($request->teacher_id, function($query, $teacherId) {
                 $query->where('teacher_id', $teacherId);
             })
@@ -80,7 +80,7 @@ class TeacherAssignmentController extends Controller
         if ($exists) {
             return response()->json([
                 'success' => false,
-                'message' => 'This teacher is already assigned to this class/subject/section for the academic year'
+                'message' => 'This teacher is already assigned to this classRoom/subject/section for the academic year'
             ], 422);
         }
 
@@ -94,7 +94,7 @@ class TeacherAssignmentController extends Controller
         if ($otherAssignment) {
             return response()->json([
                 'success' => false,
-                'message' => 'This subject is already assigned to another teacher for this class/section'
+                'message' => 'This subject is already assigned to another teacher for this classRoom/section'
             ], 422);
         }
 
@@ -114,8 +114,9 @@ class TeacherAssignmentController extends Controller
             return response()->json([
                 'success' => true,
                 'message' => 'Teacher assigned successfully',
-                'data' => $assignment->load(['teacher.user', 'subject', 'class_room', 'section'])
+                'data' => $assignment->load(['teacher.user', 'subject', 'classRoom', 'section'])
             ], 201);
+
 
         } catch (\Exception $e) {
             DB::rollBack();
@@ -132,7 +133,7 @@ class TeacherAssignmentController extends Controller
      */
     public function show(TeacherAssignment $teacherAssignment)
     {
-        $teacherAssignment->load(['teacher.user', 'subject', 'class_room', 'section']);
+        $teacherAssignment->load(['teacher.user', 'subject', 'classRoom', 'section']);
 
         return response()->json([
             'success' => true,
@@ -195,7 +196,7 @@ class TeacherAssignmentController extends Controller
             return response()->json([
                 'success' => true,
                 'message' => 'Assignment updated successfully',
-                'data' => $teacherAssignment->fresh(['teacher.user', 'subject', 'class', 'section'])
+                'data' => $teacherAssignment->fresh(['teacher.user', 'subject', 'classRoom', 'section'])
             ]);
 
         } catch (\Exception $e) {
@@ -284,7 +285,7 @@ class TeacherAssignmentController extends Controller
 
         $academicYear = $request->academic_year ?? date('Y');
 
-        $assignments = TeacherAssignment::with(['subject', 'class', 'section'])
+        $assignments = TeacherAssignment::with(['subject', 'classRoom', 'section'])
             ->where('teacher_id', $teacherId)
             ->where('academic_year', $academicYear)
             ->get();

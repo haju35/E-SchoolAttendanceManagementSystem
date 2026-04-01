@@ -15,16 +15,16 @@ class ReportController extends Controller
         $teacher = $request->user()->teacher;
 
         $request->validate([
-            'class_id' => 'required|exists:class_rooms,id',
+            'class_room_id' => 'required|exists:class_rooms,id',
             'section_id' => 'required|exists:sections,id',
             'subject_id' => 'nullable|exists:subjects,id',
             'from_date' => 'required|date',
             'to_date' => 'required|date|after_or_equal:from_date'
         ]);
 
-        // Verify teacher has access
+        // Verify teacher has access - FIX: use class_room_id
         $hasAccess = TeacherAssignment::where('teacher_id', $teacher->id)
-            ->where('class_id', $request->class_id)
+            ->where('class_room_id', $request->class_room_id)  // Changed from class_id to class_room_id
             ->where('section_id', $request->section_id)
             ->when($request->subject_id, function($query, $subjectId) {
                 $query->where('subject_id', $subjectId);
@@ -40,7 +40,7 @@ class ReportController extends Controller
 
         $query = Attendance::with(['student.user', 'subject'])
             ->where('teacher_id', $teacher->id)
-            ->where('class_id', $request->class_id)
+            ->where('class_room_id', $request->class_room_id)  // Changed from class_id to class_room_id
             ->where('section_id', $request->section_id)
             ->whereBetween('date', [$request->from_date, $request->to_date]);
 
@@ -57,7 +57,7 @@ class ReportController extends Controller
                 'to' => $request->to_date
             ],
             'class' => [
-                'id' => $request->class_id,
+                'id' => $request->class_room_id,
                 'section_id' => $request->section_id
             ],
             'summary' => [
