@@ -10,7 +10,7 @@ class Attendance extends Model
     use HasFactory;
 
     protected $fillable = [
-        'student_id', 'class_id', 'section_id', 'subject_id', 'teacher_id',
+        'student_id', 'class_room_id', 'section_id', 'subject_id', 'teacher_id',
         'date', 'status', 'reason', 'marked_by', 'marked_at'
     ];
 
@@ -29,7 +29,7 @@ class Attendance extends Model
         return $this->belongsTo(Student::class);
     }
 
-    public function class()
+    public function classRoom()
     {
         return $this->belongsTo(ClassRoom::class);
     }

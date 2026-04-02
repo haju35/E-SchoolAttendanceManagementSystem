@@ -126,7 +126,8 @@ class AttendanceController extends Controller
                         'section_id' => $request->section_id,
                         'teacher_id' => $teacher->id,
                         'status' => $data['status'],
-                        'reason' => $data['reason'] ?? null
+                        'reason' => $data['reason'] ?? null,
+                        'marked_by' => Auth::id(),'marked_at' => now()
                     ]
                 );
             }

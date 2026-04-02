@@ -81,10 +81,10 @@ class SectionController extends Controller
         ]);
     }
 
-    public function destroy($id)
+    public function destroy(Request $request, $id)
     {
         $section = Section::find($id);
-        
+
         if (!$section) {
             return response()->json([
                 'success' => false,
@@ -92,11 +92,23 @@ class SectionController extends Controller
             ], 404);
         }
 
+        // Validate new section (if students exist)
+        if ($section->students()->count() > 0) {
+            $request->validate([
+                'new_section_id' => 'required|exists:sections,id|different:' . $id
+            ]);
+
+            // Move students
+            $section->students()->update([
+                'current_section_id' => $request->new_section_id
+            ]);
+        }
+
         $section->delete();
 
         return response()->json([
             'success' => true,
-            'message' => 'Section deleted successfully'
+            'message' => 'Section deleted and students moved successfully'
         ]);
     }
 }

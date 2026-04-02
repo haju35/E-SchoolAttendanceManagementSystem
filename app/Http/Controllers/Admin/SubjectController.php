@@ -8,9 +8,11 @@ use Illuminate\Http\Request;
 
 class SubjectController extends Controller
 {
-    public function index()
+    // List subjects
+    public function index(Request $request)
     {
-        $subjects = Subject::with('classRoom')->get();
+        $limit = $request->limit ?? 20;
+        $subjects = Subject::with('classes')->paginate($limit);
 
         return response()->json([
             'success' => true,
@@ -18,6 +20,7 @@ class SubjectController extends Controller
         ]);
     }
 
+    // Create subject
     public function store(Request $request)
     {
         $request->validate([
@@ -25,7 +28,7 @@ class SubjectController extends Controller
             'code' => 'required|string|max:50|unique:subjects,code'
         ]);
 
-        $subject = Subject::create($request->all());
+        $subject = Subject::create($request->only(['name','code']));
 
         return response()->json([
             'success' => true,
@@ -34,10 +37,11 @@ class SubjectController extends Controller
         ], 201);
     }
 
+    // Show subject details
     public function show($id)
     {
-        $subject = Subject::with(['classRoom', 'teacherAssignments.teacher.user'])->find($id);
-        
+        $subject = Subject::with(['classes', 'teacherAssignments.teacher.user'])->find($id);
+
         if (!$subject) {
             return response()->json([
                 'success' => false,
@@ -51,10 +55,10 @@ class SubjectController extends Controller
         ]);
     }
 
+    // Update subject
     public function update(Request $request, $id)
     {
         $subject = Subject::find($id);
-        
         if (!$subject) {
             return response()->json([
                 'success' => false,
@@ -67,7 +71,7 @@ class SubjectController extends Controller
             'code' => 'sometimes|string|max:50|unique:subjects,code,' . $id
         ]);
 
-        $subject->update($request->all());
+        $subject->update($request->only(['name','code']));
 
         return response()->json([
             'success' => true,
@@ -76,10 +80,10 @@ class SubjectController extends Controller
         ]);
     }
 
+    // Delete subject
     public function destroy($id)
     {
         $subject = Subject::find($id);
-        
         if (!$subject) {
             return response()->json([
                 'success' => false,
