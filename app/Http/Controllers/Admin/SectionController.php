@@ -8,6 +8,7 @@ use Illuminate\Http\Request;
 
 class SectionController extends Controller
 {
+    // ✅ Get all sections
     public function index(Request $request)
     {
         $sections = Section::with('classRoom')
@@ -22,6 +23,7 @@ class SectionController extends Controller
         ]);
     }
 
+    // ✅ Create SINGLE section
     public function store(Request $request)
     {
         $request->validate([
@@ -29,6 +31,18 @@ class SectionController extends Controller
             'name' => 'required|string|max:50',
             'capacity' => 'nullable|integer|min:1'
         ]);
+
+        // Prevent duplicate section name in same class
+        $exists = Section::where('class_room_id', $request->class_room_id)
+            ->where('name', $request->name)
+            ->exists();
+
+        if ($exists) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Section already exists in this class'
+            ], 409);
+        }
 
         $section = Section::create($request->all());
 
@@ -39,6 +53,37 @@ class SectionController extends Controller
         ], 201);
     }
 
+    // ✅ Create MULTIPLE sections
+    public function bulkStore(Request $request)
+    {
+        $request->validate([
+            '*.class_room_id' => 'required|exists:class_rooms,id',
+            '*.name' => 'required|string|max:50',
+            '*.capacity' => 'nullable|integer|min:1'
+        ]);
+
+        $createdSections = [];
+
+        foreach ($request->all() as $data) {
+
+            // Prevent duplicates
+            $exists = Section::where('class_room_id', $data['class_room_id'])
+                ->where('name', $data['name'])
+                ->exists();
+
+            if (!$exists) {
+                $createdSections[] = Section::create($data);
+            }
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Sections created successfully',
+            'data' => $createdSections
+        ], 201);
+    }
+
+    // ✅ Show single section
     public function show($id)
     {
         $section = Section::with(['classRoom', 'students'])->find($id);
@@ -56,6 +101,7 @@ class SectionController extends Controller
         ]);
     }
 
+    // ✅ Update section
     public function update(Request $request, $id)
     {
         $section = Section::find($id);
@@ -72,6 +118,21 @@ class SectionController extends Controller
             'capacity' => 'nullable|integer|min:1'
         ]);
 
+        // Prevent duplicate on update
+        if ($request->name) {
+            $exists = Section::where('class_room_id', $section->class_room_id)
+                ->where('name', $request->name)
+                ->where('id', '!=', $id)
+                ->exists();
+
+            if ($exists) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Section name already exists in this class'
+                ], 409);
+            }
+        }
+
         $section->update($request->all());
 
         return response()->json([
@@ -81,6 +142,7 @@ class SectionController extends Controller
         ]);
     }
 
+    // ✅ Delete section + move students
     public function destroy(Request $request, $id)
     {
         $section = Section::find($id);
@@ -92,7 +154,7 @@ class SectionController extends Controller
             ], 404);
         }
 
-        // Validate new section (if students exist)
+        // If students exist → require move
         if ($section->students()->count() > 0) {
             $request->validate([
                 'new_section_id' => 'required|exists:sections,id|different:' . $id

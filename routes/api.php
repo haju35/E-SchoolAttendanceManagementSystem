@@ -103,9 +103,11 @@ Route::middleware(['auth:api', 'admin'])->prefix('admin')->group(function () {
     // Section Management
     Route::get('/sections', [SectionController::class, 'index']);
     Route::post('/sections', [SectionController::class, 'store']);
+    Route::post('/sections/bulk', [SectionController::class, 'bulkStore']);
     Route::get('/sections/{id}', [SectionController::class, 'show']);
     Route::put('/sections/{id}', [SectionController::class, 'update']);
     Route::delete('/sections/{id}', [SectionController::class, 'destroy']);
+
 
     // Subject Management
     Route::get('/subjects', [SubjectController::class, 'index']);

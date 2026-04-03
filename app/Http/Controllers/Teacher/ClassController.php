@@ -13,7 +13,7 @@ class ClassController extends Controller
     public function index(Request $request)
     {
         $teacher = $request->user()->teacher;
-        
+
         if (!$teacher) {
             return response()->json([
                 'success' => false,
@@ -21,7 +21,7 @@ class ClassController extends Controller
             ], 404);
         }
 
-        // Get all assignments for this teacher with relationships
+        // Get all assignments with relationships
         $assignments = TeacherAssignment::with(['classRoom', 'section', 'subject'])
             ->where('teacher_id', $teacher->id)
             ->get();
@@ -34,43 +34,59 @@ class ClassController extends Controller
             ]);
         }
 
-        // Group by class_room_id (not class_id)
-        $groupedClasses = $assignments->groupBy('class_room_id')->map(function($classItems) {
-            $classRoom = $classItems->first()->classRoom;
-            
-            // Group by section within each class
-            $sections = $classItems->groupBy('section_id')->map(function($sectionItems) {
-                $section = $sectionItems->first()->section;
-                
-                return [
-                    'section' => [
-                        'id' => $section->id,
-                        'name' => $section->name,
-                        'capacity' => $section->capacity
-                    ],
-                    'subjects' => $sectionItems->map(function($item) {
-                        return [
-                            'id' => $item->subject->id,
-                            'name' => $item->subject->name,
-                            'code' => $item->subject->code
-                        ];
-                    })->values()
-                ];
-            })->values();
+        $groupedClasses = [];
 
-            return [
-                'class' => [
-                    'id' => $classRoom->id,
-                    'name' => $classRoom->name,
-                    'numeric_value' => $classRoom->numeric_value
-                ],
-                'sections' => $sections
-            ];
-        })->values();
+        foreach ($assignments as $assignment) {
+            if (!$assignment->classRoom || !$assignment->section) {
+                continue;
+            }
+
+            $classId = $assignment->classRoom->id;
+            $sectionId = $assignment->section->id;
+
+            // Check if class already exists
+            if (!isset($groupedClasses[$classId])) {
+                $groupedClasses[$classId] = [
+                    'class' => [
+                        'id' => $assignment->classRoom->id,
+                        'name' => $assignment->classRoom->name,
+                        'numeric_value' => $assignment->classRoom->numeric_value,
+                    ],
+                    'sections' => []
+                ];
+            }
+
+            // Check if section already exists
+            if (!isset($groupedClasses[$classId]['sections'][$sectionId])) {
+                $groupedClasses[$classId]['sections'][$sectionId] = [
+                    'section' => [
+                        'id' => $assignment->section->id,
+                        'name' => $assignment->section->name,
+                        'capacity' => $assignment->section->capacity,
+                    ],
+                    'subjects' => []
+                ];
+            }
+
+            // Add subject if not exists
+            $subjectId = $assignment->subject->id ?? null;
+            if ($subjectId && !in_array($subjectId, array_column($groupedClasses[$classId]['sections'][$sectionId]['subjects'], 'id'))) {
+                $groupedClasses[$classId]['sections'][$sectionId]['subjects'][] = [
+                    'id' => $assignment->subject->id,
+                    'name' => $assignment->subject->name,
+                    'code' => $assignment->subject->code
+                ];
+            }
+        }
+
+        // Convert sections from keyed array to values
+        foreach ($groupedClasses as &$class) {
+            $class['sections'] = array_values($class['sections']);
+        }
 
         return response()->json([
             'success' => true,
-            'data' => $groupedClasses
+            'data' => array_values($groupedClasses)
         ]);
     }
 

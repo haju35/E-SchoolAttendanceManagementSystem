@@ -84,17 +84,17 @@ class TeacherAssignmentController extends Controller
             ], 422);
         }
 
-        // Check if another teacher is already assigned to this subject/class/section
-        $otherAssignment = TeacherAssignment::where('subject_id', $request->subject_id)
+        $exists = TeacherAssignment::where('teacher_id', $request->teacher_id)
+            ->where('subject_id', $request->subject_id)
             ->where('class_room_id', $request->class_room_id)
             ->where('section_id', $request->section_id)
             ->where('academic_year', $request->academic_year)
-            ->first();
+            ->exists();
 
-        if ($otherAssignment) {
+        if ($exists) {
             return response()->json([
                 'success' => false,
-                'message' => 'This subject is already assigned to another teacher for this classRoom/section'
+                'message' => 'This assignment already exists'
             ], 422);
         }
 
