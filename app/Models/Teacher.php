@@ -10,7 +10,7 @@ class Teacher extends Model
     use HasFactory;
 
     protected $fillable = [
-        'user_id', 'employee_id', 'qualification', 'joining_date'
+        'user_id', 'qualification', 'joining_date'
     ];
 
     protected $casts = [

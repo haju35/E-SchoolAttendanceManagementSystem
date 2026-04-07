@@ -43,7 +43,6 @@ class FamilyController extends Controller
             $user = User::create([
                 'name' => $request->name,
                 'email' => $request->email,
-                'password' => Hash::make($request->password),
                 'role' => 'family',
                 'phone' => $request->phone,
                 'address' => $request->address,
@@ -120,7 +119,6 @@ class FamilyController extends Controller
             if ($request->has('email')) $userData['email'] = $request->email;
             if ($request->has('phone')) $userData['phone'] = $request->phone;
             if ($request->has('address')) $userData['address'] = $request->address;
-            if ($request->has('password')) $userData['password'] = Hash::make($request->password);
             
             if (!empty($userData)) {
                 $family->user->update($userData);

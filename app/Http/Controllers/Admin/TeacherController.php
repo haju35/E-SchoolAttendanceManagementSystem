@@ -20,8 +20,9 @@ class TeacherController extends Controller
                 $query->whereHas('user', function($q) use ($search) {
                     $q->where('name', 'LIKE', "%{$search}%")
                       ->orWhere('email', 'LIKE', "%{$search}%");
-                })->orWhere('employee_id', 'LIKE', "%{$search}%");
+            });
             })
+
             ->paginate(15);
         
         return response()->json([
@@ -39,7 +40,6 @@ class TeacherController extends Controller
             $user = User::create([
                 'name' => $request->name,
                 'email' => $request->email,
-                'password' => Hash::make($request->password),
                 'role' => 'teacher',
                 'phone' => $request->phone,
                 'address' => $request->address,
@@ -49,7 +49,6 @@ class TeacherController extends Controller
             // Create Teacher
             $teacher = Teacher::create([
                 'user_id' => $user->id,
-                'employee_id' => $request->employee_id,
                 'qualification' => $request->qualification,
                 'joining_date' => $request->joining_date
             ]);
@@ -113,7 +112,6 @@ class TeacherController extends Controller
             if ($request->has('email')) $userData['email'] = $request->email;
             if ($request->has('phone')) $userData['phone'] = $request->phone;
             if ($request->has('address')) $userData['address'] = $request->address;
-            if ($request->has('password')) $userData['password'] = Hash::make($request->password);
             
             if (!empty($userData)) {
                 $teacher->user->update($userData);

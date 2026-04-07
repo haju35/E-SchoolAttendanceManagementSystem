@@ -18,7 +18,6 @@ class StoreStudentRequest extends FormRequest
             // User table fields
             'name' => 'required|string|max:255',
             'email' => 'required|string|email|max:255|unique:users,email',
-            'password' => ['required', 'confirmed', Password::defaults()],
             'phone' => 'nullable|string|max:20|unique:users,phone',
             'address' => 'nullable|string',
             'profile_photo' => 'nullable|image|max:2048',

@@ -76,7 +76,7 @@ Route::middleware(['auth:api', 'admin'])->prefix('admin')->group(function () {
     Route::get('/students/{id}', [StudentController::class, 'show']);
     Route::put('/students/{id}', [StudentController::class, 'update']);
     Route::delete('/students/{id}', [StudentController::class, 'destroy']);
-    Route::post('/students/import', [BulkImportController::class, 'students']);
+    Route::post('/students/import', [StudentController::class, 'import']);
     Route::get('/students/export/template', [BulkImportController::class, 'studentTemplate']);
 
     // Teacher Management

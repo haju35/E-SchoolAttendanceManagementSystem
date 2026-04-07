@@ -11,6 +11,9 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Str;
+use App\Mail\StudentCredentialsMail;
 
 class BulkImportController extends Controller
 {
@@ -35,6 +38,11 @@ class BulkImportController extends Controller
         try {
             foreach ($data as $index => $row) {
                 $rowNumber = $index + 2; // +2 for header row and 1-index
+
+                // Generate password if not provided
+                $password = isset($row['password']) && !empty($row['password']) 
+                    ? $row['password'] 
+                    : Str::random(10);
 
                 // Validate row data
                 $validator = Validator::make($row, [
@@ -61,7 +69,7 @@ class BulkImportController extends Controller
                 $user = User::create([
                     'name' => $row['name'],
                     'email' => $row['email'],
-                    'password' => Hash::make($row['password'] ?? 'password123'),
+                    'password' => Hash::make($password),
                     'role' => 'student',
                     'phone' => $row['phone'] ?? null,
                     'address' => $row['address'] ?? null,
@@ -69,7 +77,7 @@ class BulkImportController extends Controller
                 ]);
 
                 // Create student
-                Student::create([
+                $student = Student::create([
                     'user_id' => $user->id,
                     'admission_number' => $row['admission_number'],
                     'roll_number' => $row['roll_number'] ?? null,
@@ -81,6 +89,24 @@ class BulkImportController extends Controller
                     'status' => $row['status'] ?? 'active'
                 ]);
 
+                // Send email with credentials
+                try {
+                    Mail::to($user->email)->send(new StudentCredentialsMail(
+                        $user->name,
+                        $user->email,
+                        $password
+                    ));
+                } catch (\Exception $mailError) {
+                    // Log email error but don't fail the import
+                    \Log::error('Failed to send credentials email to: ' . $user->email, [
+                        'error' => $mailError->getMessage()
+                    ]);
+                    $results['errors'][] = [
+                        'row' => $rowNumber,
+                        'errors' => ["User created but email sending failed: " . $mailError->getMessage()]
+                    ];
+                }
+
                 $results['success']++;
             }
 
@@ -88,7 +114,7 @@ class BulkImportController extends Controller
 
             return response()->json([
                 'success' => true,
-                'message' => 'Bulk import completed',
+                'message' => "Bulk import completed. Success: {$results['success']}, Failed: {$results['failed']}",
                 'data' => $results
             ]);
 
@@ -117,7 +143,7 @@ class BulkImportController extends Controller
             'phone',
             'address',
             'status',
-            'password'
+            'password' // Optional - if empty, system will generate
         ];
 
         $filename = "student_import_template.csv";
@@ -142,7 +168,7 @@ class BulkImportController extends Controller
             '1234567890',
             '123 Main St',
             'active',
-            'password123'
+            '' // Leave empty to auto-generate
         ]);
         
         fclose($handle);
@@ -153,11 +179,37 @@ class BulkImportController extends Controller
     {
         $path = $file->getRealPath();
         $data = [];
+        $rowNumber = 1; // Start after header
         
         if (($handle = fopen($path, 'r')) !== false) {
             $headers = fgetcsv($handle);
+            // Clean headers (remove BOM and trim)
+            $headers = array_map(function($header) {
+                return trim($header, "\xEF\xBB\xBF");
+            }, $headers);
+            
+            $headerCount = count($headers);
             
             while (($row = fgetcsv($handle)) !== false) {
+                $rowNumber++;
+                $rowCount = count($row);
+                
+                // Check for mismatch
+                if ($rowCount !== $headerCount) {
+                    \Log::warning("CSV row {$rowNumber} has column mismatch", [
+                        'headers' => $headerCount,
+                        'row_columns' => $rowCount,
+                        'file' => $file->getClientOriginalName()
+                    ]);
+                    
+                    if ($rowCount < $headerCount) {
+                        $row = array_pad($row, $headerCount, null);
+                    } else {
+                        $row = array_slice($row, 0, $headerCount);
+                    }
+                }
+                
+                // Safe to combine now
                 $data[] = array_combine($headers, $row);
             }
             
