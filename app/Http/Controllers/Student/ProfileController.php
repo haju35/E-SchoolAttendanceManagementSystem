@@ -31,21 +31,11 @@ class ProfileController extends Controller
         $student = $user->student;
         
         $request->validate([
-            'name' => 'sometimes|string|max:255',
             'phone' => 'nullable|string|max:20',
-            'address' => 'nullable|string',
         ]);
-        
-        if ($request->has('name')) {
-            $user->name = $request->name;
-        }
         if ($request->has('phone')) {
             $user->phone = $request->phone;
         }
-        if ($request->has('address')) {
-            $user->address = $request->address;
-        }
-        
         $user->save();
         
         return response()->json([
@@ -80,6 +70,25 @@ class ProfileController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Password updated successfully'
+        ]);
+    }
+    public function uploadPhoto(Request $request)
+    {
+        $request->validate([
+            'photo' => 'required|image|mimes:jpg,jpeg,png|max:2048'
+        ]);
+
+        $user = $request->user();
+
+        if ($request->hasFile('photo')) {
+            $path = $request->file('photo')->store('photos', 'public');
+            $user->photo = $path;
+            $user->save();
+        }
+
+        return response()->json([
+            'success' => true,
+            'photo' => $user->photo
         ]);
     }
 }

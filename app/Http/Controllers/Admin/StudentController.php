@@ -70,8 +70,7 @@ class StudentController extends Controller
             $emailSent = false;
             try {
                 Mail::to($user->email)->send(new StudentCredentialsMail(
-                    $user->name,
-                    $user->email,
+                    $user,
                     $password
                 ));
                 $emailSent = true;
@@ -91,7 +90,8 @@ class StudentController extends Controller
                         'email' => $user->email,
                         'password' => $password
                     ]
-                ]
+                ],
+                'email_sent' => $emailSent
             ], 201);
             
         } catch (\Exception $e) {
@@ -120,12 +120,12 @@ class StudentController extends Controller
             $message .= "Successfully imported: {$results['success_count']}, ";
             $message .= "Failed: {$results['failure_count']}";
             
-            if ($results['success_count'] > 0) {
-                $message .= " New students added successfully.";
+            if (isset($results['emails_sent']) && $results['emails_sent'] > 0) {
+            $message .= " Emails sent: {$results['emails_sent']}";
             }
             
-            if ($results['failure_count'] > 0) {
-                $message .= " Please check the errors below.";
+            if (!empty($results['email_errors'])) {
+                $message .= " Email errors: " . count($results['email_errors']);
             }
             
             return response()->json([
@@ -229,6 +229,63 @@ class StudentController extends Controller
         }
     }
 
+    public function bulkDelete(Request $request)
+    {
+        $ids = $request->input('ids');
+        if (!$ids) {
+            $content = json_decode($request->getContent(), true);
+            $ids = $content['ids'] ?? null;
+        }
+        
+        if (!$ids || !is_array($ids) || empty($ids)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'No student IDs provided'
+            ], 400);
+        }
+        
+        // Check if students exist
+        $students = Student::whereIn('id', $ids)->get();
+        
+        if ($students->isEmpty()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'No students found to delete'
+            ], 404);
+        }
+        
+        DB::beginTransaction();
+        
+        try {
+            $deletedCount = 0;
+            
+            foreach ($students as $student) {
+                // IMPORTANT: Delete the user FIRST (this will cascade delete the student)
+                if ($student->user_id) {
+                    $user = User::find($student->user_id);
+                    if ($user) {
+                        $user->delete(); // This should delete the user AND cascade to student
+                        $deletedCount++;
+                    }
+                }
+            }
+            
+            DB::commit();
+            
+            return response()->json([
+                'success' => true,
+                'message' => "{$deletedCount} student(s) and their user accounts deleted successfully"
+            ]);
+            
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to delete students: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
     public function destroy($id)
     {
         $student = Student::find($id);
@@ -243,8 +300,13 @@ class StudentController extends Controller
         DB::beginTransaction();
         
         try {
+            $userId = $student->user_id;
             // Delete student (user will be cascade deleted)
             $student->delete();
+
+            if ($userId) {
+                User::find($userId)?->delete();
+            }
             
             DB::commit();
             

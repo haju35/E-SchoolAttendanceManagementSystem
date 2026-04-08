@@ -58,7 +58,7 @@
         }
         .button {
             display: inline-block;
-            background: #4F46E5;
+            background: #46e5d2;
             color: white;
             padding: 10px 20px;
             text-decoration: none;
@@ -81,14 +81,15 @@
             <h2>Welcome to Student Portal</h2>
         </div>
 
-        <p>Dear <strong>{{ $name }}</strong>,</p>
+        <p>Dear <strong>{{ $user->name }}</strong>,</p>
+
         
         <p>Your student account has been created successfully. Below are your login credentials:</p>
 
         <div class="credentials">
             <div class="credential-item">
                 <span class="label">Email:</span>
-                <span class="value">{{ $email }}</span>
+                <span class="value">{{ $user->email }}</span>
             </div>
             <div class="credential-item">
                 <span class="label">Password:</span>
@@ -96,19 +97,10 @@
             </div>
         </div>
 
-        <div class="warning">
-            <strong>⚠️ Important Security Notice:</strong>
-            <ul style="margin: 10px 0 0 20px; padding: 0;">
-                <li>Please change your password after your first login</li>
-                <li>Do not share your credentials with anyone</li>
-                <li>Keep this email for your records</li>
-            </ul>
-        </div>
-
         <p>You can login to the student portal using the link below:</p>
         
         <div style="text-align: center;">
-            <a href="{{ url('/login') }}" class="button">Login to Portal</a>
+            <a href="{{ url('http://localhost:3000/login') }}" class="button">Login to Portal</a>
         </div>
 
         <p>If you have any questions or need assistance, please contact the school administration.</p>

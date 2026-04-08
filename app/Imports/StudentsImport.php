@@ -17,6 +17,8 @@ use Maatwebsite\Excel\Concerns\WithChunkReading;
 use Maatwebsite\Excel\Concerns\SkipsEmptyRows;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
+use App\Mail\StudentCredentialsMail;
 use Illuminate\Support\Str;
 use Carbon\Carbon;
 
@@ -25,18 +27,20 @@ class StudentsImport implements ToModel, WithHeadingRow, WithValidation, SkipsOn
     private $successCount = 0;
     private $failures = [];
     private $rowNumber = 0;
+    private $emailsSent = 0;
+    private $emailErrors = [];
 
     public function model(array $row)
     {
         $this->rowNumber++;
         
         try {
-            // Normalize column names (handle both lowercase and capitalized versions)
-            $name = $row['name'] ?? $row['Name'] ?? $row['name'] ?? null;
+            // Normalize column names
+            $name = $row['name'] ?? $row['Name'] ?? null;
             $email = $row['email'] ?? $row['Email'] ?? null;
             $admissionNumber = $row['admission_number'] ?? $row['Admission No'] ?? $row['admission_no'] ?? null;
-            $className = $row['class'] ?? $row['Class'] ?? $row['class'] ?? null;
-            $sectionName = $row['section'] ?? $row['Section'] ?? $row['section'] ?? null;
+            $className = $row['class'] ?? $row['Class'] ?? null;
+            $sectionName = $row['section'] ?? $row['Section'] ?? null;
             $dateOfBirth = $row['date_of_birth'] ?? $row['Date of Birth'] ?? $row['dob'] ?? null;
             $gender = $row['gender'] ?? $row['Gender'] ?? null;
             $rollNumber = $row['roll_number'] ?? $row['Roll Number'] ?? $row['roll_no'] ?? null;
@@ -140,6 +144,28 @@ class StudentsImport implements ToModel, WithHeadingRow, WithValidation, SkipsOn
                 'status' => $status,
             ]);
 
+            // FIXED: Send email - corrected the typo and use send() instead of queue()
+            try {
+                Log::info('Preparing to send email to: ' . $user->email);
+                Log::info('With data - Name: ' . $user->name . ', Email: ' . $user->email . ', Password: ' . $password);
+                Mail::to($user->email)->send(
+                    new StudentCredentialsMail(
+                        $user,
+                        $password
+                    )
+                );
+                $this->emailsSent++;
+                Log::info("Email sent successfully to: {$user->email}");
+            } catch (\Exception $e) {
+                $this->emailErrors[] = [
+                    'row' => $this->rowNumber + 1,
+                    'email' => $user->email,
+                    'error' => $e->getMessage()
+                ];
+                // FIXED: Corrected the typo here (getMessagge -> getMessage)
+                Log::error('Email failed for ' . $user->email . ': ' . $e->getMessage());
+            }
+
             $this->successCount++;
             
             return null;
@@ -156,7 +182,6 @@ class StudentsImport implements ToModel, WithHeadingRow, WithValidation, SkipsOn
 
     public function rules(): array
     {
-        // Make all rules optional since we handle validation manually
         return [
             '*.student_name' => 'nullable',
             '*.Name' => 'nullable',
@@ -198,6 +223,16 @@ class StudentsImport implements ToModel, WithHeadingRow, WithValidation, SkipsOn
         return $this->failures;
     }
 
+    public function getEmailsSent(): int
+    {
+        return $this->emailsSent;
+    }
+
+    public function getEmailErrors(): array
+    {
+        return $this->emailErrors;
+    }
+
     public function getResults(): array
     {
         $totalRows = $this->successCount + count($this->failures);
@@ -206,7 +241,9 @@ class StudentsImport implements ToModel, WithHeadingRow, WithValidation, SkipsOn
             'total_rows' => $totalRows,
             'success_count' => $this->successCount,
             'failure_count' => count($this->failures),
-            'failures' => $this->failures
+            'failures' => $this->failures,
+            'emails_sent' => $this->emailsSent,
+            'email_errors' => $this->emailErrors
         ];
     }
 }

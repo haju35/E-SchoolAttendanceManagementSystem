@@ -76,6 +76,8 @@ Route::middleware(['auth:api', 'admin'])->prefix('admin')->group(function () {
     Route::get('/students/{id}', [StudentController::class, 'show']);
     Route::put('/students/{id}', [StudentController::class, 'update']);
     Route::delete('/students/{id}', [StudentController::class, 'destroy']);
+    Route::Delete('/students/bulk-delete', [studentController::class, 'bulkDelete']);
+    Route::post('/students/bulk-delete', [studentController::class, 'bulkDelete']);
     Route::post('/students/import', [StudentController::class, 'import']);
     Route::get('/students/export/template', [BulkImportController::class, 'studentTemplate']);
 
@@ -179,6 +181,8 @@ Route::middleware(['auth:api', 'student'])->prefix('student')->group(function ()
     Route::get('/attendance/summary', [StudentAttendanceController::class, 'summary']);
     Route::get('/profile', [StudentProfileController::class, 'show']);
     Route::put('/profile', [StudentProfileController::class, 'update']);
+    Route::put('/password', [StudentProfileController::class, 'updatePassword']);
+    Route::post('/photo', [StudentProfileController::class, 'uploadPhoto']);
 });
 
 // ========== FAMILY PANEL ==========
