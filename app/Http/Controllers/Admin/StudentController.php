@@ -45,12 +45,13 @@ class StudentController extends Controller
             $user = User::create([
                 'name' => $request->name,
                 'email' => $request->email,
-                'role' => 'student',
                 'phone' => $request->phone,
                 'address' => $request->address,
                 'is_active' => true,
                 'password' => Hash::make($password)
             ]);
+
+            $user->assignRole('student');
             
             // Create Student
             $student = Student::create([

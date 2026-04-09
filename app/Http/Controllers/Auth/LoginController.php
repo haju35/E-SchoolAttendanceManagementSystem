@@ -35,7 +35,7 @@ class LoginController extends Controller
             } elseif ($user->role === 'student') {
                 return redirect()->intended(route('student.dashboard'));
             } elseif ($user->role === 'parent') {
-                return redirect()->intended(route('parent.dashboard'));
+                return redirect()->intended(route('family.dashboard'));
             }
             
             return redirect()->intended('/dashboard');

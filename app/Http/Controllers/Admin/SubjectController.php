@@ -11,6 +11,15 @@ class SubjectController extends Controller
     // List subjects
     public function index(Request $request)
     {
+      if($request->has('limit') && $request->limit === 'all'){
+        $subjects = Subject::with('classes')->get();
+
+        return response()->json([
+            'success' => true,
+            'data' => $subjects
+        ]);
+      }
+
         $limit = $request->limit ?? 20;
         $subjects = Subject::with('classes')->paginate($limit);
 
@@ -18,6 +27,7 @@ class SubjectController extends Controller
             'success' => true,
             'data' => $subjects
         ]);
+        
     }
 
     // Create subject

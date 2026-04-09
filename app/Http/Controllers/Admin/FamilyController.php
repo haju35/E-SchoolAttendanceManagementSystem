@@ -43,11 +43,12 @@ class FamilyController extends Controller
             $user = User::create([
                 'name' => $request->name,
                 'email' => $request->email,
-                'role' => 'family',
                 'phone' => $request->phone,
                 'address' => $request->address,
                 'is_active' => true
             ]);
+
+            $user->assignRole('family');
             
             // Create Family
             $family = Family::create([

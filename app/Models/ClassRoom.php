@@ -27,7 +27,7 @@ class ClassRoom extends Model
 
     public function subjects()
     {
-        return $this->belongsToMany(Subject::class, 'class_subject')
+        return $this->belongsToMany(Subject::class, 'class_subjects')
                     ->withPivot('is_compulsory')
                     ->withTimestamps();
     }

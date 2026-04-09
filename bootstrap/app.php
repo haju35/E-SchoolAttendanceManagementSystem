@@ -19,10 +19,14 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->alias([
-            'admin' => AdminMiddleware::class,
+            /*'admin' => AdminMiddleware::class,
             'teacher' => TeacherMiddleware::class,
             'student' => StudentMiddleware::class,
-            'family' => FamilyMiddleware::class,
+            'family' => FamilyMiddleware::class,*/
+
+            'role' => \Spatie\Permission\Middleware\RoleMiddleware::class,
+            'permission' => \Spatie\Permission\Middleware\PermissionMiddleware::class,
+            'role_or_permission' => \Spatie\Permission\Middleware\RoleOrPermissionMiddleware::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

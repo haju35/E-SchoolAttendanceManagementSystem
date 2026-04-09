@@ -6,10 +6,12 @@ use App\Http\Controllers\Auth\RegisterController;
 use App\Http\Controllers\Auth\ForgotPasswordController;
 use App\Http\Controllers\Auth\ResetPasswordController;
 use App\Http\Controllers\Admin\AdminController;
+use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\StudentController;
 use App\Http\Controllers\Admin\TeacherController;
 use App\Http\Controllers\Admin\FamilyController;
 use App\Http\Controllers\Admin\ClassRoomController;
+use App\Http\Controllers\Admin\ClassSubjectController;
 use App\Http\Controllers\Admin\TeacherAssignmentController;
 use App\Http\Controllers\Admin\SectionController;
 use App\Http\Controllers\Admin\SubjectController;
@@ -44,6 +46,7 @@ Route::prefix('auth')->group(function () {
     Route::post('/login', [LoginController::class, 'apiLogin']);
     Route::post('/forgot-password', [ForgotPasswordController::class, 'apiSendResetLink']);
     Route::post('/reset-password', [ResetPasswordController::class, 'apiReset']);
+    Route::post('/setup/create-admin', [AdminController::class, 'createAdmin']);
 });
 
 // ========== AUTHENTICATED USER ROUTES ==========
@@ -66,9 +69,15 @@ Route::middleware('auth:api')->group(function () {
 });
 
 // ========== ADMIN PANEL ==========
-Route::middleware(['auth:api', 'admin'])->prefix('admin')->group(function () {
+Route::middleware(['auth:api', 'role:admin'])->prefix('admin')->group(function () {
     // Dashboard
-    Route::get('/dashboard', [AdminController::class, 'dashboard']);
+    Route::get('/dashboard', [DashboardController::class, 'index']);
+    Route::post('/create', [AdminController::class, 'createAdmin']);
+    Route::get('/users', [AdminController::class, 'index']);
+    Route::post('/users', [AdminController::class, 'store']);
+    Route::post('/users/{id}/reset-password', [AdminController::class, 'resetPassword']);
+    Route::post('/users/{id}/toggle-status', [AdminController::class, 'toggleStatus']);
+    Route::delete('/users/{id}', [AdminController::class, 'destroy']);
 
     // Student Management
     Route::get('/students', [StudentController::class, 'index']);
@@ -159,7 +168,7 @@ Route::middleware(['auth:api', 'admin'])->prefix('admin')->group(function () {
 });
 
 // ========== TEACHER PANEL ==========
-Route::middleware(['auth:api', 'teacher'])->prefix('teacher')->group(function () {
+Route::middleware(['auth:api', 'role:teacher'])->prefix('teacher')->group(function () {
     Route::get('/dashboard', [TeacherDashboardController::class, 'index']);
     Route::get('/attendance', [TeacherAttendanceController::class, 'index']);
     Route::post('/attendance', [TeacherAttendanceController::class, 'store']);
@@ -175,7 +184,7 @@ Route::middleware(['auth:api', 'teacher'])->prefix('teacher')->group(function ()
 });
 
 // ========== STUDENT PANEL ==========
-Route::middleware(['auth:api', 'student'])->prefix('student')->group(function () {
+Route::middleware(['auth:api', 'role:student'])->prefix('student')->group(function () {
     Route::get('/dashboard', [StudentDashboardController::class, 'index']);
     Route::get('/attendance', [StudentAttendanceController::class, 'index']);
     Route::get('/attendance/summary', [StudentAttendanceController::class, 'summary']);
@@ -186,7 +195,7 @@ Route::middleware(['auth:api', 'student'])->prefix('student')->group(function ()
 });
 
 // ========== FAMILY PANEL ==========
-Route::middleware(['auth:api', 'family'])->prefix('family')->group(function () {
+Route::middleware(['auth:api', 'role:family'])->prefix('family')->group(function () {
     Route::get('/dashboard', [FamilyDashboardController::class, 'index']);
     Route::get('/children', [ChildController::class, 'index']);
     Route::get('/children/{id}', [ChildController::class, 'show']);

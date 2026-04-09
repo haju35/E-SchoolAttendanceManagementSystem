@@ -40,11 +40,12 @@ class TeacherController extends Controller
             $user = User::create([
                 'name' => $request->name,
                 'email' => $request->email,
-                'role' => 'teacher',
                 'phone' => $request->phone,
                 'address' => $request->address,
                 'is_active' => true
             ]);
+
+            $user->assignRole('teacher');
             
             // Create Teacher
             $teacher = Teacher::create([
