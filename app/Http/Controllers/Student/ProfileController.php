@@ -11,7 +11,16 @@ class ProfileController extends Controller
     // Show profile
     public function show(Request $request)
     {
-        $student = $request->user()->student->load([
+        $user = $request->user();
+
+        if (!$user->student) {
+            return response()->json([
+                'success' => false,
+                'message' => 'User is not a student'
+            ], 403);
+        }
+
+        $student = $user()->student->load([
             'user', 
             'currentClass', 
             'currentSection',
@@ -31,7 +40,7 @@ class ProfileController extends Controller
         $student = $user->student;
         
         $request->validate([
-            'phone' => 'nullable|string|max:20',
+            'phone' => 'nullable|string|max:20|unique:users,phone,' . $user->id,
         ]);
         if ($request->has('phone')) {
             $user->phone = $request->phone;
@@ -81,7 +90,9 @@ class ProfileController extends Controller
         $user = $request->user();
 
         if ($request->hasFile('photo')) {
-            $path = $request->file('photo')->store('photos', 'public');
+            if ($user->photo) {
+            Storage::disk('public')->delete($user->photo);
+}
             $user->photo = $path;
             $user->save();
         }

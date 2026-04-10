@@ -37,7 +37,9 @@ class AttendanceController extends Controller
         for ($day = 1; $day <= $daysInMonth; $day++) {
             $date = Carbon::create($year, $month, $day)->format('Y-m-d');
 
-            $record = $attendances->firstWhere('date', $date);
+            $record = $attendances->first(function ($a) use ($date) {
+                return \Carbon\Carbon::parse($a->date)->format('Y-m-d') === $date;
+            });
 
             $calendarDays[] = [
                 'date' => $date,
@@ -53,7 +55,7 @@ class AttendanceController extends Controller
                 'date' => $a->date,
                 'day' => Carbon::parse($a->date)->format('l'),
                 'status' => $a->status,
-                'subject_name' => $a->subject->name ?? 'N/A',
+                'subject_name' => optional($a->subject)->name ?? 'N/A',
                 'check_in_time' => $a->marked_at ?? null,
                 'remarks' => $a->reason
             ];
