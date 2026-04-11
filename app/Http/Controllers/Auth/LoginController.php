@@ -34,7 +34,7 @@ class LoginController extends Controller
                 return redirect()->intended(route('teacher.dashboard'));
             } elseif ($user->role === 'student') {
                 return redirect()->intended(route('student.dashboard'));
-            } elseif ($user->role === 'parent') {
+            } elseif ($user->role === 'family') {
                 return redirect()->intended(route('family.dashboard'));
             }
             
@@ -57,36 +57,39 @@ class LoginController extends Controller
     }
 
     // API Login
+
+
     public function apiLogin(LoginRequest $request)
     {
-        $credentials = $request->only('email', 'password');
+        try {
 
-        if (Auth::attempt($credentials)) {
-            $user = Auth::user();
+            $user = \App\Models\User::where('email', $request->email)->first();
 
-            if (!$user->is_active) {
+            if (!$user || !\Illuminate\Support\Facades\Hash::check($request->password, $user->password)) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Account is deactivated.'
-                ], 403);
+                    'message' => 'Invalid credentials'
+                ], 401);
             }
 
+            $scopes = $this->getUserScopes($user);
+
             $tokenResult = $user->createToken('auth_token');
-            $token = $tokenResult->accessToken;
 
             return response()->json([
                 'success' => true,
                 'user' => $user,
-                'access_token' => $token,
-                'token_type' => 'Bearer',
+                'access_token' => $tokenResult->accessToken,
                 'role' => $user->role
             ]);
-        }
 
-        return response()->json([
-            'success' => false,
-            'message' => 'Invalid credentials'
-        ], 401);
+        } catch (\Throwable $e) {
+            return response()->json([
+                'error' => $e->getMessage(),
+                'line' => $e->getLine(),
+                'file' => $e->getFile()
+            ], 500);
+        }
     }
 
     // API Logout
@@ -104,13 +107,61 @@ class LoginController extends Controller
     public function apiRefresh(Request $request)
     {
         $user = $request->user();
+        $scopes = $this->getUserScopes($user);
         $user->token()->revoke();
-        $newToken = $user->createToken('auth_token')->accessToken;
+        $newToken = $user->createToken('auth_token', $scopes)->accessToken;
         
         return response()->json([
             'success' => true,
             'access_token' => $newToken,
-            'token_type' => 'Bearer'
+            'token_type' => 'Bearer',
+            'scopes' => $scopes
         ]);
+    }
+    private function getUserScopes($user)
+    {
+        switch ($user->role) {
+            case 'admin':
+                return [
+                    'admin:manage-users',
+                    'admin:manage-students',
+                    'admin:manage-teachers',
+                    'admin:manage-classes',
+                    'admin:view-all-attendance',
+                    'admin:generate-reports',
+                    'admin:configure-system',
+                    'student:view-attendance',
+                    'student:view-profile',
+                    'teacher:mark-attendance',
+                    'teacher:view-class',
+                ];
+                
+            case 'teacher':
+                return [
+                    'teacher:mark-attendance',
+                    'teacher:edit-attendance',
+                    'teacher:view-class',
+                    'teacher:view-reports',
+                    'student:view-attendance',
+                    'student:view-profile',
+                ];
+                
+            case 'student':
+                return [
+                    'student:view-attendance',
+                    'student:view-profile',
+                    'student:update-profile',
+                ];
+                
+            case 'family':
+                return [
+                    'family:view-children',
+                    'family:view-child-attendance',
+                    'family:receive-notifications',
+                ];
+                
+            default:
+                return ['basic:access'];
+        }
     }
 }

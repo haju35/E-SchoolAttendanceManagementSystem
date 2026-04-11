@@ -185,13 +185,13 @@ Route::middleware(['auth:api', 'role:teacher'])->prefix('teacher')->group(functi
 
 // ========== STUDENT PANEL ==========
 Route::middleware(['auth:api', 'role:student'])->prefix('student')->group(function () {
-    Route::get('/dashboard', [StudentDashboardController::class, 'index']);
-    Route::get('/attendance', [StudentAttendanceController::class, 'index']);
-    Route::get('/attendance/summary', [StudentAttendanceController::class, 'summary']);
-    Route::get('/profile', [StudentProfileController::class, 'show']);
-    Route::put('/profile', [StudentProfileController::class, 'update']);
-    Route::put('/password', [StudentProfileController::class, 'updatePassword']);
-    Route::post('/photo', [StudentProfileController::class, 'uploadPhoto']);
+    Route::get('/dashboard', [StudentDashboardController::class, 'index'])->middleware('scope:student:view-attendance');
+    Route::get('/attendance', [StudentAttendanceController::class, 'index'])->middleware('scope:student:view-attendance');
+    Route::get('/attendance/summary', [StudentAttendanceController::class, 'summary'])->middleware('scope:student:view-attendance');
+    Route::get('/profile', [StudentProfileController::class, 'show'])->middleware('scope:student:view-profile');
+    Route::put('/profile', [StudentProfileController::class, 'update'])->middleware('scope:student:update-profile');
+    Route::put('/password', [StudentProfileController::class, 'updatePassword'])->middleware('scope:student:update-profile');
+    Route::post('/photo', [StudentProfileController::class, 'uploadPhoto'])->middleware('scope:student:update-profile');
 });
 
 // ========== FAMILY PANEL ==========

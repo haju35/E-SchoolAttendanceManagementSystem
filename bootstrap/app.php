@@ -24,6 +24,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'student' => StudentMiddleware::class,
             'family' => FamilyMiddleware::class,*/
 
+            'scopes' => \App\Http\Middleware\CheckScopes::class,
             'role' => \Spatie\Permission\Middleware\RoleMiddleware::class,
             'permission' => \Spatie\Permission\Middleware\PermissionMiddleware::class,
             'role_or_permission' => \Spatie\Permission\Middleware\RoleOrPermissionMiddleware::class,
