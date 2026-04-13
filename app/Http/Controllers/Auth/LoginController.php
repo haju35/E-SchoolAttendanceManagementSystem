@@ -72,15 +72,13 @@ class LoginController extends Controller
                 ], 401);
             }
 
-            $scopes = $this->getUserScopes($user);
-
             $tokenResult = $user->createToken('auth_token');
 
             return response()->json([
                 'success' => true,
                 'user' => $user,
                 'access_token' => $tokenResult->accessToken,
-                'role' => $user->role
+                'role' => $user->role,
             ]);
 
         } catch (\Throwable $e) {

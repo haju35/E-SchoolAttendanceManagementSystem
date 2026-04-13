@@ -10,7 +10,10 @@ use App\Models\Family;
 use App\Models\Student;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Mail;
+use App\Mail\FamilyCredentialsMail;
 
 class FamilyController extends Controller
 {
@@ -39,13 +42,16 @@ class FamilyController extends Controller
         DB::beginTransaction();
         
         try {
+            $password = Str::random(10);
+
             // Create User
             $user = User::create([
                 'name' => $request->name,
                 'email' => $request->email,
                 'phone' => $request->phone,
                 'address' => $request->address,
-                'is_active' => true
+                'is_active' => true,
+                'password' => Hash::make($password),
             ]);
 
             $user->assignRole('family');
@@ -62,13 +68,29 @@ class FamilyController extends Controller
                 Student::whereIn('id', $request->student_ids)
                     ->update(['family_id' => $family->id]);
             }
+
+            // Send email
+            $emailSent = false;
+
+            try {
+                Mail::to($user->email)->send(
+                    new FamilyCredentialsMail($user, $password)
+                );
+
+                $emailSent = true;
+            } catch (\Exception $e) {
+                \Log::warning('Family email failed: ' . $e->getMessage());
+            }
             
             DB::commit();
             
             return response()->json([
                 'success' => true,
                 'message' => 'Family created successfully',
-                'data' => $family->load(['user', 'students'])
+                'credentials' => [
+                    'email' => $user->email,
+                    'password' => $password
+                ]
             ], 201);
             
         } catch (\Exception $e) {
@@ -162,7 +184,7 @@ class FamilyController extends Controller
 
     public function destroy($id)
     {
-        $family = Family::find($id);
+        $family = Family::with('user')->find($id);
         
         if (!$family) {
             return response()->json([
@@ -179,6 +201,9 @@ class FamilyController extends Controller
                 ->update(['family_id' => null]);
             
             // Delete family (user will be cascade deleted)
+            if($family->user){
+                $family->user->delete();
+            }
             $family->delete();
             
             DB::commit();
@@ -190,6 +215,7 @@ class FamilyController extends Controller
             
         } catch (\Exception $e) {
             DB::rollBack();
+            
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to delete family',

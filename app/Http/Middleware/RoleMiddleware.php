@@ -5,7 +5,7 @@ namespace App\Http\Middleware;
 use Closure;
 use Illuminate\Auth\AuthenticationException;
 
-class CheckScopes
+class RoleMiddleware
 {
     public function handle($request, Closure $next, ...$scopes)
     {

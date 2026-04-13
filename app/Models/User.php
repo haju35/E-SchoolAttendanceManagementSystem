@@ -26,6 +26,8 @@ class User extends Authenticatable
         'is_active' => 'boolean'
     ];
 
+    protected $guard_name = 'api';
+
     public function isAdmin(){
         return $this-> role == 'admin';
     }

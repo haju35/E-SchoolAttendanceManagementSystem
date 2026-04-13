@@ -8,8 +8,11 @@ use App\Http\Requests\UpdateTeacherRequest;
 use App\Models\User;
 use App\Models\Teacher;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Mail;
+use App\Mail\TeacherCredentialsMail;
 
 class TeacherController extends Controller
 {
@@ -36,13 +39,15 @@ class TeacherController extends Controller
         DB::beginTransaction();
         
         try {
+            $password = Str::random(10);
             // Create User
             $user = User::create([
                 'name' => $request->name,
                 'email' => $request->email,
                 'phone' => $request->phone,
                 'address' => $request->address,
-                'is_active' => true
+                'is_active' => true,
+                'password' => Hash::make($password),
             ]);
 
             $user->assignRole('teacher');
@@ -53,15 +58,23 @@ class TeacherController extends Controller
                 'qualification' => $request->qualification,
                 'joining_date' => $request->joining_date
             ]);
+
+            try{
+                Mail::to($user->email)->send(
+                    new TeacherCredentialsMail($user, $password)
+                );
+            }catch(\Exception $e){
+                \Log::warning("Teacher email failed: ".$e->getMessage());
+            }
             
             DB::commit();
             
             return response()->json([
                 'success' => true,
                 'message' => 'Teacher created successfully',
-                'data' => [
-                    'user' => $user,
-                    'teacher' => $teacher
+                'credentials' => [
+                    'email' => $user->email,
+                    'password' => $password
                 ]
             ], 201);
             
