@@ -3,28 +3,39 @@
 namespace App\Http\Middleware;
 
 use Closure;
-use Illuminate\Auth\AuthenticationException;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 
 class RoleMiddleware
 {
-    public function handle($request, Closure $next, ...$scopes)
+    public function handle(Request $request, Closure $next, ...$roles)
     {
-        if (!$request->user() || !$request->user()->token()) {
-            throw new AuthenticationException();
+        // Check if user is authenticated
+        if (!Auth::check()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Unauthenticated. Please login again.'
+            ], 401);
         }
         
-        $tokenScopes = $request->user()->token()->scopes;
+        $user = Auth::user();
         
-        foreach ($scopes as $scope) {
-            if (!in_array($scope, $tokenScopes)) {
-                return response()->json([
-                    'success' => false,
-                    'error' => 'Forbidden',
-                    'message' => 'You do not have permission to access this resource. Required scope: ' . $scope
-                ], 403);
-            }
+        // If no specific roles required, just allow access
+        if (empty($roles)) {
+            return $next($request);
         }
         
-        return $next($request);
+        // Check if user's role matches any of the allowed roles
+        if (in_array($user->role, $roles)) {
+            return $next($request);
+        }
+        
+        // Role mismatch - return 403 with helpful message
+        return response()->json([
+            'success' => false,
+            'message' => 'Access denied. This resource requires role: ' . implode(', ', $roles),
+            'your_role' => $user->role,
+            'required_roles' => $roles
+        ], 403);
     }
 }

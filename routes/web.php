@@ -12,18 +12,18 @@ Route::get('/login', function () {
     return view('auth.login');
 })->name('login');
 
-Route::middleware(['auth', 'admin'])->group(function () {
+Route::middleware(['auth', 'role:admin'])->group(function () {
     Route::view('/admin/dashboard', 'admin.dashboard')->name('admin.dashboard');
 });
 
-Route::middleware(['auth', 'teacher'])->group(function () {
+Route::middleware(['auth', 'role:teacher'])->group(function () {
     Route::get('/teacher/dashboard', [TeacherDashboardController::class, 'index'])->name('teacher.dashboard');
 });
 
-Route::middleware(['auth', 'student'])->group(function () {
+Route::middleware(['auth', 'role:student'])->group(function () {
     Route::get('/student/dashboard', [StudentDashboardController::class, 'index'])->name('student.dashboard');
 });
 
-Route::middleware(['auth', 'family'])->group(function () {
+Route::middleware(['auth', 'role:family'])->group(function () {
     Route::view('/family/dashboard', 'family.dashboard')->name('family.dashboard');
 });

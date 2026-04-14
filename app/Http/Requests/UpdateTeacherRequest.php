@@ -9,30 +9,33 @@ class UpdateTeacherRequest extends FormRequest
 {
     public function authorize()
     {
-        return $this->user() && $this->user()->isAdmin();
+        return $this->user() !== null;
     }
 
     public function rules()
     {
-        $teacherId = $this->route('id') ?? $this->teacher;
+        $teacherId = $this->route('id');
         
         return [
             'name' => 'sometimes|string|max:255',
-            'email' => ['sometimes', 'string', 'email', 'max:255',
-                Rule::unique('users')->ignore($teacherId, 'id')
+            'email' => [
+                'sometimes',
+                'email',
+                Rule::unique('users', 'email')->whereNull('deleted_at')->ignore($teacherId)
             ],
-            'phone' => ['nullable', 'string', 'max:20',
-                Rule::unique('users')->ignore($teacherId, 'id')
-            ],
+            'phone' => 'nullable|string|max:20',
             'address' => 'nullable|string',
-            'profile_photo' => 'nullable|image|max:2048',
-            'password' => ['nullable', 'confirmed', 'min:8'],
-            
-            'employee_id' => ['sometimes', 'string', 'max:50',
-                Rule::unique('teachers')->ignore($teacherId, 'user_id')
-            ],
             'qualification' => 'nullable|string',
-            'joining_date' => 'sometimes|date',
+            'joining_date' => 'nullable|date_format:Y-m-d',
+        ];
+    }
+
+    public function messages()
+    {
+        return [
+            'email.email' => 'Please enter a valid email address',
+            'email.unique' => 'This email is already registered',
+            'joining_date.date_format' => 'Joining date must be in YYYY-MM-DD format',
         ];
     }
 }

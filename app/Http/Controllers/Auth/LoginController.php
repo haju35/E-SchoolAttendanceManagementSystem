@@ -105,18 +105,16 @@ class LoginController extends Controller
     public function apiRefresh(Request $request)
     {
         $user = $request->user();
-        $scopes = $this->getUserScopes($user);
         $user->token()->revoke();
-        $newToken = $user->createToken('auth_token', $scopes)->accessToken;
+        $newToken = $user->createToken('auth_token')->accessToken;
         
         return response()->json([
             'success' => true,
             'access_token' => $newToken,
             'token_type' => 'Bearer',
-            'scopes' => $scopes
         ]);
     }
-    private function getUserScopes($user)
+    /*private function getUserScopes($user)
     {
         switch ($user->role) {
             case 'admin':
@@ -161,5 +159,5 @@ class LoginController extends Controller
             default:
                 return ['basic:access'];
         }
-    }
+    }*/
 }

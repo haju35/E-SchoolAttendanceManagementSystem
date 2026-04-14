@@ -48,6 +48,7 @@ class TeacherController extends Controller
                 'address' => $request->address,
                 'is_active' => true,
                 'password' => Hash::make($password),
+                'role' => 'teacher'
             ]);
 
             $user->assignRole('teacher');
@@ -132,7 +133,7 @@ class TeacherController extends Controller
             }
             
             // Update Teacher
-            $teacherData = $request->only(['employee_id', 'qualification', 'joining_date']);
+            $teacherData = $request->only([ 'qualification', 'joining_date']);
             if (!empty($teacherData)) {
                 $teacher->update($teacherData);
             }
@@ -157,33 +158,52 @@ class TeacherController extends Controller
 
     public function destroy($id)
     {
-        $teacher = Teacher::find($id);
-        
-        if (!$teacher) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Teacher not found'
-            ], 404);
-        }
-        
-        DB::beginTransaction();
-        
         try {
-            $teacher->delete(); // user will be cascade deleted
+            $teacher = Teacher::with('user')->find($id);
             
-            DB::commit();
+            if (!$teacher) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Teacher not found'
+                ], 404);
+            }
             
-            return response()->json([
-                'success' => true,
-                'message' => 'Teacher deleted successfully'
-            ]);
+            DB::beginTransaction();
+            
+            try {
+                $userId = $teacher->user_id;
+                $teacherName = $teacher->user ? $teacher->user->name : 'Unknown';
+                
+                // Delete the teacher record
+                $teacher->delete();
+                
+                // Delete the associated user account
+                if ($userId) {
+                    $user = User::withTrashed()->find($userId);
+                    if ($user) {
+                        $user->forceDelete();
+                    }
+                }
+                
+                DB::commit();
+                
+                return response()->json([
+                    'success' => true,
+                    'message' => "Teacher '{$teacherName}' and associated user account deleted successfully"
+                ]);
+                
+            } catch (\Exception $e) {
+                DB::rollBack();
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Failed to delete teacher: ' . $e->getMessage()
+                ], 500);
+            }
             
         } catch (\Exception $e) {
-            DB::rollBack();
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to delete teacher',
-                'error' => $e->getMessage()
+                'message' => 'Error: ' . $e->getMessage()
             ], 500);
         }
     }

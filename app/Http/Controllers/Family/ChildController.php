@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Family;
 
 use App\Http\Controllers\Controller;
 use App\Models\Student;
+use App\Models\Attendance;
 use Illuminate\Http\Request;
 
 class ChildController extends Controller
@@ -16,11 +17,32 @@ class ChildController extends Controller
             'user', 
             'currentClass', 
             'currentSection'
-        ])->get();
+        ])->get()->map(function($child) {
+            // Calculate attendance stats
+            $attendances = Attendance::where('student_id', $child->id)->get();
+            $totalDays = $attendances->count();
+            $presentDays = $attendances->where('status', 'present')->count();
+            $attendancePercentage = $totalDays > 0 ? round(($presentDays / $totalDays) * 100, 2) : 0;
+            
+            return [
+                'id' => $child->id,
+                'name' => $child->user->name ?? 'N/A',
+                'class_name' => $child->currentClass->name ?? 'Not Assigned',
+                'section' => $child->currentSection->name ?? 'Not Assigned',
+                'roll_number' => $child->roll_number ?? 'N/A',
+                'attendance_rate' => $attendancePercentage,
+                'present_days' => $presentDays,
+                'absent_days' => $attendances->where('status', 'absent')->count(),
+                'late_days' => $attendances->where('status', 'late')->count(),
+                'status' => $child->status ?? 'active'
+            ];
+        });
         
         return response()->json([
             'success' => true,
-            'data' => $children
+            'data' => [
+                'children' => $children
+            ]
         ]);
     }
     
@@ -39,9 +61,29 @@ class ChildController extends Controller
             ], 404);
         }
         
+        // Calculate attendance stats
+        $attendances = Attendance::where('student_id', $child->id)->get();
+        $totalDays = $attendances->count();
+        $presentDays = $attendances->where('status', 'present')->count();
+        $attendancePercentage = $totalDays > 0 ? round(($presentDays / $totalDays) * 100, 2) : 0;
+        
+        $data = [
+            'id' => $child->id,
+            'name' => $child->user->name,
+            'email' => $child->user->email,
+            'class_name' => $child->currentClass->name ?? 'Not Assigned',
+            'section' => $child->currentSection->name ?? 'Not Assigned',
+            'roll_number' => $child->roll_number ?? 'N/A',
+            'admission_number' => $child->admission_number ?? 'N/A',
+            'attendance_rate' => $attendancePercentage,
+            'present_days' => $presentDays,
+            'absent_days' => $attendances->where('status', 'absent')->count(),
+            'late_days' => $attendances->where('status', 'late')->count()
+        ];
+        
         return response()->json([
             'success' => true,
-            'data' => $child
+            'data' => $data
         ]);
     }
     
@@ -60,18 +102,44 @@ class ChildController extends Controller
         
         $attendances = $child->attendances()
             ->with(['subject', 'teacher.user'])
-            ->when($request->from_date, function($query, $fromDate) {
-                $query->whereDate('date', '>=', $fromDate);
+            ->when($request->month, function($query, $month) {
+                $query->whereMonth('date', $month);
             })
-            ->when($request->to_date, function($query, $toDate) {
-                $query->whereDate('date', '<=', $toDate);
+            ->when($request->year, function($query, $year) {
+                $query->whereYear('date', $year);
             })
             ->orderBy('date', 'desc')
-            ->paginate(15);
+            ->get()
+            ->map(function($attendance) {
+                return [
+                    'id' => $attendance->id,
+                    'date' => $attendance->date,
+                    'status' => $attendance->status,
+                    'subject_name' => $attendance->subject->name ?? 'N/A',
+                    'teacher_name' => $attendance->teacher->user->name ?? 'N/A',
+                    'check_in_time' => $attendance->check_in_time ?? '-',
+                    'remarks' => $attendance->remarks ?? '-'
+                ];
+            });
+        
+        // Calculate stats for this child
+        $allAttendances = $child->attendances()->get();
+        $totalDays = $allAttendances->count();
+        $presentDays = $allAttendances->where('status', 'present')->count();
+        $attendancePercentage = $totalDays > 0 ? round(($presentDays / $totalDays) * 100, 2) : 0;
         
         return response()->json([
             'success' => true,
-            'data' => $attendances
+            'data' => [
+                'records' => $attendances,
+                'stats' => [
+                    'attendance_rate' => $attendancePercentage,
+                    'present_days' => $presentDays,
+                    'absent_days' => $allAttendances->where('status', 'absent')->count(),
+                    'late_days' => $allAttendances->where('status', 'late')->count(),
+                    'total_days' => $totalDays
+                ]
+            ]
         ]);
     }
     
