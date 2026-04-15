@@ -26,8 +26,11 @@ class RoleMiddleware
         }
         
         // Check if user's role matches any of the allowed roles
-        if (in_array(strtolower($user->role), array_map('strtolower', $roles))) {
-            return $next($request);
+        // Check using Spatie roles
+        foreach ($roles as $role) {
+            if ($user->hasRole($role)) {
+                return $next($request);
+            }
         }
         
         // Role mismatch - return 403 with helpful message

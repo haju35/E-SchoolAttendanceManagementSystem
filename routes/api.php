@@ -61,12 +61,12 @@ Route::middleware('auth:api')->prefix('auth')->group(function () {
 });
 
 // ========== ROLE-SPECIFIC DASHBOARDS ==========
-Route::middleware('auth:api')->group(function () {
+/*Route::middleware('auth:api')->group(function () {
     Route::get('/auth/admin/dashboard', [LoginController::class, 'apiAdminDashboard'])->middleware('admin');
     Route::get('/auth/teacher/dashboard', [LoginController::class, 'apiTeacherDashboard'])->middleware('teacher');
     Route::get('/auth/student/dashboard', [LoginController::class, 'apiStudentDashboard'])->middleware('student');
     Route::get('/auth/family/dashboard', [LoginController::class, 'apiFamilyDashboard'])->middleware('family');
-});
+});*/
 
 // ========== ADMIN PANEL ==========
 Route::middleware(['auth:api', 'role:admin'])->prefix('admin')->group(function () {
