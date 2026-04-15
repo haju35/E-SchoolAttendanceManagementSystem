@@ -52,7 +52,6 @@ class FamilyController extends Controller
                 'address' => $request->address,
                 'is_active' => true,
                 'password' => Hash::make($password),
-                'role' => 'family'
             ]);
 
             $user->assignRole('family');

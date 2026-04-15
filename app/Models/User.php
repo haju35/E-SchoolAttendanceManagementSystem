@@ -14,7 +14,7 @@ class User extends Authenticatable
     use HasApiTokens, HasFactory, Notifiable, HasRoles;
 
     protected $fillable = [
-        'name', 'email', 'password', 'role', 'phone', 'address', 'photo', 'is_active'
+        'name', 'email', 'password', 'phone', 'address', 'photo', 'is_active'
     ];
 
     protected $hidden = [
@@ -29,18 +29,18 @@ class User extends Authenticatable
     protected $guard_name = 'api';
 
     public function isAdmin(){
-        return $this-> role == 'admin';
+        return $this->hasRole('admin');
     }
     public function isTeacher(){
-        return $this -> role == 'teacher';
+        return $this->hasRole('teacher');
     }
 
     public function isStudent(){
-        return $this -> role == 'student';
+        return $this -> hasRole('student');
     }
 
     public function isFamily(){
-        return $this -> role == 'family';
+        return $this -> hasRole('family');
     }
 
     public function teacher()

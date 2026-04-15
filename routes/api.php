@@ -77,7 +77,13 @@ Route::middleware(['auth:api', 'role:admin'])->prefix('admin')->group(function (
     Route::post('/users', [AdminController::class, 'store']);
     Route::post('/users/{id}/reset-password', [AdminController::class, 'resetPassword']);
     Route::post('/users/{id}/toggle-status', [AdminController::class, 'toggleStatus']);
-    Route::delete('/users/{id}', [AdminController::class, 'destroy']);
+    Route::delete('/users/{id}', [AdminController::class, 'destroy']); 
+    Route::get('/roles-permissions', [AdminController::class, 'rolesPermissions']);
+    Route::post('/roles', [AdminController::class, 'createRole']);
+    Route::post('/permissions', [AdminController::class, 'createPermission']);
+    Route::post('/roles/{id}/permissions', [AdminController::class, 'assignPermissionsToRole']);
+    Route::post('/users/{id}/role', [AdminController::class, 'assignRoleToUser']);
+
 
     // Student Management
     Route::get('/students', [StudentController::class, 'index']);
@@ -85,7 +91,7 @@ Route::middleware(['auth:api', 'role:admin'])->prefix('admin')->group(function (
     Route::get('/students/{id}', [StudentController::class, 'show']);
     Route::put('/students/{id}', [StudentController::class, 'update']);
     Route::delete('/students/{id}', [StudentController::class, 'destroy']);
-    Route::Delete('/students/bulk-delete', [studentController::class, 'bulkDelete']);
+    Route::delete('/students/bulk-delete', [StudentController::class, 'bulkDelete']);
     Route::post('/students/bulk-delete', [studentController::class, 'bulkDelete']);
     Route::post('/students/import', [StudentController::class, 'import']);
     Route::get('/students/export/template', [BulkImportController::class, 'studentTemplate']);

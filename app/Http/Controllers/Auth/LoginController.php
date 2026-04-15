@@ -72,13 +72,28 @@ class LoginController extends Controller
                 ], 401);
             }
 
+            $roleName = $user->getRoleNames()->first();
+            $permissions = $user->getAllPermissions()->pluck('name');
+
             $tokenResult = $user->createToken('auth_token');
 
             return response()->json([
                 'success' => true,
-                'user' => $user,
+                'user' => [
+                    'id' => $user->id,
+                    'name' => $user->name,
+                    'email' => $user->email,
+                    'phone' => $user->phone,
+                    'address' => $user->address,
+                    'photo' => $user->photo,
+                    'is_active' => $user->is_active,
+                    'created_at' => $user->created_at,
+                    'updated_at' => $user->updated_at,
+                    'role' => $roleName,  // ← Role added here
+                ],
                 'access_token' => $tokenResult->accessToken,
-                'role' => $user->role,
+                'role' => $roleName,  // Keep this for backward compatibility
+                'permissions' => $permissions,
             ]);
 
         } catch (\Throwable $e) {

@@ -7,10 +7,13 @@ use Illuminate\Http\Request;
 use App\Models\User;
 use Illuminate\Support\Facades\Hash;
 use Spatie\Permission\Models\Role;
+use Spatie\Permission\Models\Permission;
 
 class AdminController extends Controller
 {
-    // Create admin user (your existing method)
+    // =========================
+    // CREATE ADMIN
+    // =========================
     public function createAdmin(Request $request)
     {
         $request->validate([
@@ -23,11 +26,9 @@ class AdminController extends Controller
             'name' => $request->name,
             'email' => $request->email,
             'password' => Hash::make($request->password),
-            'role' => 'admin',
-            'is_active' => 1,
+            'is_active' => true,
         ]);
 
-        // Create role if not exists
         Role::firstOrCreate(['name' => 'admin']);
         $user->assignRole('admin');
 
@@ -38,184 +39,274 @@ class AdminController extends Controller
         ]);
     }
 
-    // NEW: Get all users (with filters)
+    // =========================
+    // GET USERS
+    // =========================
     public function index(Request $request)
     {
-        try {
-            $query = User::query();
-            
-            // Filter by role
-            if ($request->role) {
-                $query->where('role', $request->role);
-            }
-            
-            // Filter by status
-            if ($request->status === 'active') {
-                $query->where('is_active', true);
-            } elseif ($request->status === 'inactive') {
-                $query->where('is_active', false);
-            }
-            
-            // Search by name or email
-            if ($request->search) {
-                $query->where(function($q) use ($request) {
-                    $q->where('name', 'like', "%{$request->search}%")
-                      ->orWhere('email', 'like', "%{$request->search}%");
-                });
-            }
-            
-            $users = $query->latest()->paginate(20);
-            
-            return response()->json([
-                'success' => true,
-                'data' => $users
-            ]);
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Failed to fetch users: ' . $e->getMessage()
-            ], 500);
+        $query = User::with('roles');
+
+        if ($request->role) {
+            $query->whereHas('roles', function ($q) use ($request) {
+                $q->where('name', $request->role);
+            });
         }
+
+        if ($request->status === 'active') {
+            $query->where('is_active', true);
+        } elseif ($request->status === 'inactive') {
+            $query->where('is_active', false);
+        }
+
+        if ($request->search) {
+            $query->where(function ($q) use ($request) {
+                $q->where('name', 'like', "%{$request->search}%")
+                  ->orWhere('email', 'like', "%{$request->search}%");
+            });
+        }
+
+        return response()->json([
+            'success' => true,
+            'data' => $query->latest()->paginate(20)
+        ]);
     }
 
-    // NEW: Create any user (teacher, student, family)
+    // =========================
+    // CREATE USER
+    // =========================
     public function store(Request $request)
     {
-        try {
-            $request->validate([
-                'name' => 'required|string|max:255',
-                'email' => 'required|email|unique:users,email',
-                'password' => 'required|string|min:6',
-                'role' => 'required|in:teacher,student,family',
-                'phone' => 'nullable|string',
-                'address' => 'nullable|string'
-            ]);
-            
-            $user = User::create([
-                'name' => $request->name,
-                'email' => $request->email,
-                'password' => Hash::make($request->password),
-                'role' => $request->role,
-                'phone' => $request->phone,
-                'address' => $request->address,
-                'is_active' => true
-            ]);
-            
-            // Assign Spatie role
-            $role = Role::firstOrCreate(['name' => $request->role]);
-            $user->assignRole($role);
-            
-            return response()->json([
-                'success' => true,
-                'message' => ucfirst($request->role) . ' created successfully',
-                'data' => $user
-            ], 201);
-            
-        } catch (\Illuminate\Validation\ValidationException $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Validation failed',
-                'errors' => $e->errors()
-            ], 422);
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Failed to create user: ' . $e->getMessage()
-            ], 500);
-        }
+        $request->validate([
+            'name' => 'required|string|max:255',
+            'email' => 'required|email|unique:users,email',
+            'password' => 'required|string|min:6',
+            'role' => 'required|string',
+            'phone' => 'nullable|string',
+            'address' => 'nullable|string'
+        ]);
+
+        $user = User::create([
+            'name' => $request->name,
+            'email' => $request->email,
+            'password' => Hash::make($request->password),
+            'phone' => $request->phone,
+            'address' => $request->address,
+            'is_active' => true
+        ]);
+
+        // ✅ FIX: define role properly
+        $user->assignRole($request->role);
+
+        return response()->json([
+            'success' => true,
+            'message' => ucfirst($request->role) . ' created successfully',
+            'data' => $user
+        ]);
     }
 
-    // NEW: Reset user password
+    // =========================
+    // RESET PASSWORD
+    // =========================
     public function resetPassword(Request $request, $id)
     {
-        try {
-            $request->validate([
-                'password' => 'required|string|min:6|confirmed'
-            ]);
-            
-            $user = User::findOrFail($id);
-            $user->password = Hash::make($request->password);
-            $user->save();
-            
-            return response()->json([
-                'success' => true,
-                'message' => 'Password reset successfully'
-            ]);
-            
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Failed to reset password: ' . $e->getMessage()
-            ], 500);
-        }
+        $request->validate([
+            'password' => 'required|string|min:6|confirmed'
+        ]);
+
+        $user = User::findOrFail($id);
+        $user->password = Hash::make($request->password);
+        $user->save();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Password reset successfully'
+        ]);
     }
 
-    // NEW: Toggle user active/inactive status
+    // =========================
+    // TOGGLE STATUS
+    // =========================
     public function toggleStatus($id)
     {
-        try {
-            $user = User::findOrFail($id);
-            
-            // Prevent deactivating yourself
-            if ($user->id === auth()->id()) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Cannot change your own status'
-                ], 400);
-            }
-            
-            $user->is_active = !$user->is_active;
-            $user->save();
-            
-            return response()->json([
-                'success' => true,
-                'message' => $user->is_active ? 'User activated successfully' : 'User deactivated successfully'
-            ]);
-            
-        } catch (\Exception $e) {
+        $user = User::findOrFail($id);
+
+        if ($user->id === auth()->id()) {
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to update user status: ' . $e->getMessage()
-            ], 500);
+                'message' => 'Cannot change your own status'
+            ], 400);
         }
+
+        $user->is_active = !$user->is_active;
+        $user->save();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Status updated successfully'
+        ]);
     }
 
-    // NEW: Delete user
+    // =========================
+    // DELETE USER
+    // =========================
     public function destroy($id)
     {
-        try {
-            $user = User::findOrFail($id);
-            
-            // Prevent deleting yourself
-            if ($user->id === auth()->id()) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Cannot delete your own account'
-                ], 400);
-            }
-            
-            // Prevent deleting the last admin
-            if ($user->role === 'admin') {
-                $adminCount = User::where('role', 'admin')->count();
-                if ($adminCount <= 1) {
-                    return response()->json([
-                        'success' => false,
-                        'message' => 'Cannot delete the last admin user'
-                    ], 400);
-                }
-            }
-            
-            $user->delete();
-            
-            return response()->json([
-                'success' => true,
-                'message' => 'User deleted successfully'
-            ]);
-            
-        } catch (\Exception $e) {
+        $user = User::findOrFail($id);
+
+        if ($user->id === auth()->id()) {
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to delete user: ' . $e->getMessage()
+                'message' => 'Cannot delete yourself'
+            ], 400);
+        }
+
+        if ($user->hasRole('admin')) {
+            $adminCount = User::role('admin')->count();
+            if ($adminCount <= 1) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Cannot delete last admin'
+                ], 400);
+            }
+        }
+
+        $user->delete();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'User deleted successfully'
+        ]);
+    }
+
+    public function createRole(Request $request)
+    {
+        $request->validate([
+            'name' => 'required|string|unique:roles,name',
+        ]);
+
+        $role = Role::create([
+            'name' => $request->name,
+            'guard_name' => 'api'
+        ]);
+
+        return response()->json([
+            'message' => 'Role created successfully',
+            'role' => $role
+        ]);
+    }
+
+    public function updateRole(Request $request, $id)
+    {
+        $request->validate([
+            'name' => 'required|string|unique:roles,name,' . $id,
+        ]);
+
+        $role = Role::findById($id);
+
+        $role->update([
+            'name' => $request->name,
+        ]);
+
+        return response()->json([
+            'message' => 'Role updated successfully',
+            'role' => $role
+        ]);
+    }
+
+    // =========================
+    // ROLES + PERMISSIONS UI SUPPORT
+    // =========================
+
+    public function getRoles()
+    {
+        return response()->json(
+            Role::with('permissions')->get()
+        );
+    }
+
+    public function getPermissions()
+    {
+        return response()->json(
+            Permission::all()
+        );
+    }
+
+    public function rolesPermissions()
+    {
+        return response()->json([
+            'roles' => Role::with('permissions')->get(),
+            'permissions' => Permission::all()
+        ]);
+    }
+
+    // =========================
+    // ASSIGN ROLE + PERMISSIONS TO USER
+    // =========================
+    public function assignRolePermissions(Request $request, $id)
+    {
+        $request->validate([
+            'role' => 'required|string',
+            'permissions' => 'array'
+        ]);
+
+        $user = User::findOrFail($id);
+
+        $user->syncRoles([$request->role]);
+        $user->syncPermissions($request->permissions ?? []);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Role and permissions updated successfully'
+        ]);
+    }
+
+    public function assignPermissionsToRole(Request $request, $id)
+    {
+        try {
+            $request->validate([
+                'permissions' => 'required|array',
+                'permissions.*' => 'integer|exists:permissions,id'
+            ]);
+
+            $role = Role::findById($id, 'api');
+
+            if (!$role) {
+                return response()->json([
+                    'message' => 'Role not found'
+                ], 404);
+            }
+
+            // CLEAN INPUT
+            $permissionIds = collect($request->permissions)
+                ->filter()
+                ->map(fn($p) => (int) $p)
+                ->values()
+                ->toArray();
+
+            // IMPORTANT: allow empty permissions (remove all)
+            if (empty($permissionIds)) {
+                $role->syncPermissions([]);
+                
+                return response()->json([
+                    'message' => 'All permissions removed',
+                    'role' => $role->load('permissions')
+                ]);
+            }
+
+            // ✅ USE CLEAN DATA HERE
+            $permissions = Permission::whereIn('id', $permissionIds)->get();
+
+            $role->syncPermissions($permissions);
+
+            return response()->json([
+                'message' => 'Permissions assigned successfully',
+                'role' => $role->load('permissions')
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'Server error',
+                'error' => $e->getMessage()
             ], 500);
         }
     }

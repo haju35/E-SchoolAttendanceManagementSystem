@@ -22,8 +22,10 @@ class DashboardController extends Controller
             $absentToday = Attendance::whereDate('date', $today)->where('status', 'absent')->count();
             $lateToday = Attendance::whereDate('date', $today)->where('status', 'late')->count();
             
-            $attendancePercentage = $totalStudents > 0 
-                ? round(($presentToday / $totalStudents) * 100) 
+            $totalMarkedToday = $presentToday + $absentToday + $lateToday;
+
+            $attendancePercentage = $totalMarkedToday > 0
+                ? round(($presentToday / $totalMarkedToday) * 100)
                 : 0;
 
             $recentStudents = Student::with(['user', 'currentClass'])

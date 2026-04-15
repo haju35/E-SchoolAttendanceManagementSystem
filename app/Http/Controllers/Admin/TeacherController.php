@@ -48,7 +48,6 @@ class TeacherController extends Controller
                 'address' => $request->address,
                 'is_active' => true,
                 'password' => Hash::make($password),
-                'role' => 'teacher'
             ]);
 
             $user->assignRole('teacher');

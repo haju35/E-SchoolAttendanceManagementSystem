@@ -26,7 +26,7 @@ class RoleMiddleware
         }
         
         // Check if user's role matches any of the allowed roles
-        if (in_array($user->role, $roles)) {
+        if (in_array(strtolower($user->role), array_map('strtolower', $roles))) {
             return $next($request);
         }
         

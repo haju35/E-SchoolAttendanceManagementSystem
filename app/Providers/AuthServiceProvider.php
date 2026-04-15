@@ -11,6 +11,7 @@ class AuthServiceProvider extends ServiceProvider
     public function boot()
     {
         $this->registerPolicies();
+        Passport::routes();
         
         // Define scopes based on your project requirements
         Passport::tokensCan([

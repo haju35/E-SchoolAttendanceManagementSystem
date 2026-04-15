@@ -26,8 +26,6 @@ return Application::configure(basePath: dirname(__DIR__))
 
             //'scopes' => \App\Http\Middleware\CheckScopes::class,
             'role' => \App\Http\Middleware\RoleMiddleware::class,
-            'permission' => \Spatie\Permission\Middleware\PermissionMiddleware::class,
-            'role_or_permission' => \Spatie\Permission\Middleware\RoleOrPermissionMiddleware::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
