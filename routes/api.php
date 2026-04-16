@@ -11,8 +11,11 @@ use App\Http\Controllers\Admin\StudentController;
 use App\Http\Controllers\Admin\TeacherController;
 use App\Http\Controllers\Admin\FamilyController;
 use App\Http\Controllers\Admin\ClassRoomController;
+use App\Http\Controllers\Admin\ClassTeacherController;
+
 use App\Http\Controllers\Admin\ClassSubjectController;
 use App\Http\Controllers\Admin\TeacherAssignmentController;
+use App\Http\Controllers\Admin\ClassAttendanceController;
 use App\Http\Controllers\Admin\SectionController;
 use App\Http\Controllers\Admin\SubjectController;
 use App\Http\Controllers\Admin\AttendanceReportController;
@@ -83,6 +86,12 @@ Route::middleware(['auth:api', 'role:admin'])->prefix('admin')->group(function (
     Route::post('/permissions', [AdminController::class, 'createPermission']);
     Route::post('/roles/{id}/permissions', [AdminController::class, 'assignPermissionsToRole']);
     Route::post('/users/{id}/role', [AdminController::class, 'assignRoleToUser']);
+
+    // Class Teacher Management
+    Route::get('/class-teachers', [App\Http\Controllers\Admin\ClassTeacherController::class, 'index']);
+    Route::get('/class-teachers/list', [App\Http\Controllers\Admin\ClassTeacherController::class, 'list']);
+    Route::post('/assign-class-teacher', [App\Http\Controllers\Admin\ClassTeacherController::class, 'assign']);
+    Route::delete('/class-teachers/{id}', [App\Http\Controllers\Admin\ClassTeacherController::class, 'remove']);
 
 
     // Student Management
@@ -187,6 +196,13 @@ Route::middleware(['auth:api', 'role:teacher'])->prefix('teacher')->group(functi
     Route::get('/reports/attendance', [TeacherReportController::class, 'attendance']);
     Route::get('/profile', [TeacherProfileController::class, 'show']);
     Route::put('/profile', [TeacherProfileController::class, 'update']);
+
+
+    // Class Teacher Routes (NEW)
+    Route::get('/class-teacher/dashboard', [App\Http\Controllers\Teacher\ClassAttendanceController::class, 'classTeacherDashboard']);
+    Route::post('/class-attendance/mark', [App\Http\Controllers\Teacher\ClassAttendanceController::class, 'markClassAttendance']);
+    Route::get('/class-attendance', [App\Http\Controllers\Teacher\ClassAttendanceController::class, 'getClassAttendance']);
+    Route::get('/class-attendance/student/{studentId}', [App\Http\Controllers\Teacher\ClassAttendanceController::class, 'getStudentClassAttendance']);
 });
 
 // ========== STUDENT PANEL ==========
