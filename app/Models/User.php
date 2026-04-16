@@ -72,4 +72,9 @@ class User extends Authenticatable
     {
         return $this->hasMany(Attendance::class, 'marked_by');
     }
+
+    public function students()
+    {
+        return $this->hasMany(Student::class, 'family_id');
+    }
 }

@@ -210,6 +210,7 @@ Route::middleware(['auth:api', 'role:family'])->prefix('family')->group(function
     Route::get('/attendance', [FamilyAttendanceController::class, 'index']);
     Route::get('/notifications', [FamilyNotificationController::class, 'index']);
     Route::put('/notifications/{id}/read', [FamilyNotificationController::class, 'markAsRead']);
-    Route::get('/profile', [FamilyProfileController::class, 'show']);
-    Route::put('/profile', [FamilyProfileController::class, 'update']);
+    Route::get('/profile', [FamilyProfileController::class, 'getprofile']);
+    Route::put('/profile', [FamilyProfileController::class, 'updateprofile']);
+    Route::put('/change-password', [FamilyProfileController::class, 'changePassword']);
 });

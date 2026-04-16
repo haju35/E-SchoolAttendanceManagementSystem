@@ -178,9 +178,9 @@ class TeacherController extends Controller
                 
                 // Delete the associated user account
                 if ($userId) {
-                    $user = User::withTrashed()->find($userId);
+                    $user = User::find($userId);
                     if ($user) {
-                        $user->forceDelete();
+                        $user->delete();
                     }
                 }
                 
