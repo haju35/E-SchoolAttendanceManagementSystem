@@ -72,8 +72,19 @@ class LoginController extends Controller
                 ], 401);
             }
 
+            if (!$user->is_active) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Your account is deactivated. Please contact administrator.'
+                ], 403);
+            }
+
             $roleName = $user->getRoleNames()->first();
             $permissions = $user->getAllPermissions()->pluck('name');
+            $isClassTeacher = false;
+            if ($roleName === 'teacher' && $user->teacher) {
+                $isClassTeacher = $user->teacher->is_class_teacher ?? false;
+            }
 
             $tokenResult = $user->createToken('auth_token');
 
@@ -94,10 +105,13 @@ class LoginController extends Controller
                 'access_token' => $tokenResult->accessToken,
                 'role' => $roleName,  // Keep this for backward compatibility
                 'permissions' => $permissions,
+                'is_class_teacher' => $isClassTeacher,
+                'redirect' => $roleName === 'teacher' && $isClassTeacher ? 'homeroom' : $roleName, 
             ]);
 
         } catch (\Throwable $e) {
             return response()->json([
+                'success' => false,
                 'error' => $e->getMessage(),
                 'line' => $e->getLine(),
                 'file' => $e->getFile()

@@ -200,6 +200,9 @@ Route::middleware(['auth:api', 'role:teacher'])->prefix('teacher')->group(functi
 
     // Class Teacher Routes (NEW)
     Route::get('/class-teacher/dashboard', [App\Http\Controllers\Teacher\ClassAttendanceController::class, 'classTeacherDashboard']);
+    Route::get('/class-teacher/classes', [App\Http\Controllers\Teacher\ClassAttendanceController::class, 'getClassTeacherClasses']);
+    Route::post('/attendance/class', [App\Http\Controllers\Teacher\ClassAttendanceController::class, 'markClassAttendance']);
+    Route::get('/class-attendance/students', [App\Http\Controllers\Teacher\ClassAttendanceController::class, 'getClassStudents']);
     Route::post('/class-attendance/mark', [App\Http\Controllers\Teacher\ClassAttendanceController::class, 'markClassAttendance']);
     Route::get('/class-attendance', [App\Http\Controllers\Teacher\ClassAttendanceController::class, 'getClassAttendance']);
     Route::get('/class-attendance/student/{studentId}', [App\Http\Controllers\Teacher\ClassAttendanceController::class, 'getStudentClassAttendance']);

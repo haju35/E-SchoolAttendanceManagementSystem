@@ -7,14 +7,286 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use App\Models\Student;
 use App\Models\ClassAttendance;
-use App\Models\TeacherAssignment;
+use App\Models\ClassRoom;
+use App\Models\Section;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class ClassAttendanceController extends Controller
 {
-    /**
-     * Get class teacher dashboard with homeroom info
-     */
+    // Get classes where teacher is class teacher
+    public function getClassTeacherClasses()
+    {
+        try {
+            $teacher = Auth::user()->teacher;
+            
+            if (!$teacher) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Teacher not found',
+                    'data' => []
+                ]);
+            }
+            
+            if (!$teacher->is_class_teacher) {
+                return response()->json([
+                    'success' => true,
+                    'data' => [],
+                    'message' => 'You are not a class teacher'
+                ]);
+            }
+            
+            if (!$teacher->assigned_class_id) {
+                return response()->json([
+                    'success' => true,
+                    'data' => [],
+                    'message' => 'No class assigned'
+                ]);
+            }
+            
+            // Get the class
+            $class = ClassRoom::find($teacher->assigned_class_id);
+            
+            if (!$class) {
+                return response()->json([
+                    'success' => true,
+                    'data' => []
+                ]);
+            }
+            
+            // Get sections for this class
+            $sections = Section::where('class_room_id', $class->id)->get();
+            
+            $sectionsData = [];
+            foreach ($sections as $section) {
+                $studentCount = Student::where('current_class_id', $class->id)
+                    ->where('current_section_id', $section->id)
+                    ->count();
+                    
+                $sectionsData[] = [
+                    'id' => $section->id,
+                    'name' => $section->name,
+                    'capacity' => $section->capacity,
+                    'student_count' => $studentCount
+                ];
+            }
+            
+            $result = [
+                [
+                    'id' => $class->id,
+                    'name' => $class->name,
+                    'numeric_value' => $class->numeric_value,
+                    'sections' => $sectionsData
+                ]
+            ];
+            
+            return response()->json([
+                'success' => true,
+                'data' => $result
+            ]);
+            
+        } catch (\Exception $e) {
+            Log::error('getClassTeacherClasses error: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+                'data' => []
+            ], 500);
+        }
+    }
+    
+    // Get students for class attendance
+    public function getClassStudents(Request $request)
+    {
+        try {
+            $teacher = Auth::user()->teacher;
+            
+            if (!$teacher) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Teacher not found'
+                ], 404);
+            }
+            
+            $request->validate([
+                'class_id' => 'required|exists:class_rooms,id',
+                'section_id' => 'required|exists:sections,id',
+                'date' => 'required|date'
+            ]);
+            
+            $classId = $request->class_id;
+            $sectionId = $request->section_id;
+            $date = $request->date;
+            
+            // Get students using DB facade (avoid model issues)
+            $students = DB::table('students')
+                ->join('users', 'students.user_id', '=', 'users.id')
+                ->where('students.current_class_id', $classId)
+                ->where('students.current_section_id', $sectionId)
+                ->select(
+                    'students.id',
+                    'students.roll_number',
+                    'students.admission_number',
+                    'users.name as student_name'
+                )
+                ->orderBy('students.roll_number', 'asc')
+                ->get();
+            
+            // Check if attendance already marked
+            $attendanceMarked = DB::table('class_attendances')
+                ->where('class_room_id', $classId)
+                ->where('section_id', $sectionId)
+                ->where('date', $date)
+                ->exists();
+            
+            // Get existing attendance records
+            $existingAttendance = [];
+            if ($attendanceMarked) {
+                $records = DB::table('class_attendances')
+                    ->where('class_room_id', $classId)
+                    ->where('section_id', $sectionId)
+                    ->where('date', $date)
+                    ->get();
+                
+                foreach ($records as $record) {
+                    $existingAttendance[$record->student_id] = $record;
+                }
+            }
+            
+            // Format students data
+            $studentsData = [];
+            foreach ($students as $student) {
+                $attendance = isset($existingAttendance[$student->id]) ? $existingAttendance[$student->id] : null;
+                $studentsData[] = [
+                    'id' => $student->id,
+                    'roll_number' => $student->roll_number ?? '-',
+                    'admission_number' => $student->admission_number ?? '',
+                    'name' => $student->student_name ?? 'Unknown',
+                    'status' => $attendance ? $attendance->status : 'present',
+                    'remarks' => $attendance ? $attendance->remarks : ''
+                ];
+            }
+            
+            return response()->json([
+                'success' => true,
+                'data' => [
+                    'students' => $studentsData,
+                    'attendance_marked' => $attendanceMarked,
+                    'total_students' => count($studentsData)
+                ]
+            ]);
+            
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Validation failed',
+                'errors' => $e->errors()
+            ], 422);
+        } catch (\Exception $e) {
+            Log::error('getClassStudents error: ' . $e->getMessage());
+            Log::error('Stack trace: ' . $e->getTraceAsString());
+            
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+                'line' => $e->getLine()
+            ], 500);
+        }
+    }
+    
+    // Mark class attendance
+    public function markClassAttendance(Request $request)
+    {
+        try {
+            $teacher = Auth::user()->teacher;
+            
+            if (!$teacher) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Teacher not found'
+                ], 404);
+            }
+            
+            $request->validate([
+                'date' => 'required|date',
+                'class_id' => 'required|exists:class_rooms,id',
+                'section_id' => 'required|exists:sections,id',
+                'attendance' => 'required|array',
+                'attendance.*.student_id' => 'required|exists:students,id',
+                'attendance.*.status' => 'required|in:present,absent,late'
+            ]);
+            
+            $date = $request->date;
+            $classId = $request->class_id;
+            $sectionId = $request->section_id;
+            
+            // Delete existing records
+            DB::table('class_attendances')
+                ->where('class_room_id', $classId)
+                ->where('section_id', $sectionId)
+                ->where('date', $date)
+                ->delete();
+            
+            // Insert new records
+            foreach ($request->attendance as $record) {
+                DB::table('class_attendances')->insert([
+                    'student_id' => $record['student_id'],
+                    'class_room_id' => $classId,
+                    'section_id' => $sectionId,
+                    'date' => $date,
+                    'status' => $record['status'],
+                    'marked_by' => $teacher->id,
+                    'remarks' => $record['remarks'] ?? null,
+                    'created_at' => now(),
+                    'updated_at' => now()
+                ]);
+            }
+            
+            return response()->json([
+                'success' => true,
+                'message' => 'Attendance saved successfully'
+            ]);
+            
+        } catch (\Exception $e) {
+            Log::error('markClassAttendance error: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage()
+            ], 500);
+        }
+    }
+    
+    // Get class attendance for a date
+    public function getClassAttendance(Request $request)
+    {
+        try {
+            $teacher = Auth::user()->teacher;
+            
+            $request->validate([
+                'date' => 'required|date'
+            ]);
+            
+            $attendance = DB::table('class_attendances')
+                ->where('class_room_id', $teacher->assigned_class_id)
+                ->where('section_id', $teacher->assigned_section_id)
+                ->where('date', $request->date)
+                ->get();
+            
+            return response()->json([
+                'success' => true,
+                'data' => [
+                    'attendance' => $attendance
+                ]
+            ]);
+            
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage()
+            ], 500);
+        }
+    }
+    // Dashboard method
     public function classTeacherDashboard()
     {
         try {
@@ -23,58 +295,50 @@ class ClassAttendanceController extends Controller
             if (!$teacher) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Teacher profile not found'
+                    'message' => 'Teacher not found'
                 ], 404);
             }
             
             $isClassTeacher = $teacher->is_class_teacher ?? false;
             $classTeacherInfo = null;
             
+            // Log the values for debugging
+            \Log::info('classTeacherDashboard called', [
+                'teacher_id' => $teacher->id,
+                'is_class_teacher' => $isClassTeacher,
+                'assigned_class_id' => $teacher->assigned_class_id,
+                'assigned_section_id' => $teacher->assigned_section_id
+            ]);
+            
+            // If teacher is a class teacher, get the info
             if ($isClassTeacher && $teacher->assigned_class_id && $teacher->assigned_section_id) {
-                // Get class info
-                $classRoom = $teacher->assignedClass;
-                $section = $teacher->assignedSection;
+                $classRoom = \App\Models\ClassRoom::find($teacher->assigned_class_id);
+                $section = \App\Models\Section::find($teacher->assigned_section_id);
                 
-                // Get students with attendance summary
-                $studentsList = Student::where('current_class_id', $teacher->assigned_class_id)
+                // Get students in this class
+                $studentsList = \App\Models\Student::where('current_class_id', $teacher->assigned_class_id)
                     ->where('current_section_id', $teacher->assigned_section_id)
                     ->with('user')
                     ->get();
                 
                 $students = [];
                 foreach ($studentsList as $student) {
-                    $currentMonth = now()->month;
-                    $currentYear = now()->year;
-                    
-                    $attendanceStats = ClassAttendance::where('student_id', $student->id)
-                        ->whereMonth('date', $currentMonth)
-                        ->whereYear('date', $currentYear)
-                        ->selectRaw('
-                            SUM(CASE WHEN status = "present" THEN 1 ELSE 0 END) as present,
-                            SUM(CASE WHEN status = "absent" THEN 1 ELSE 0 END) as absent,
-                            SUM(CASE WHEN status = "late" THEN 1 ELSE 0 END) as late,
-                            COUNT(*) as total
-                        ')
-                        ->first();
-                    
-                    $total = $attendanceStats->total ?? 0;
-                    $present = $attendanceStats->present ?? 0;
-                    $percentage = $total > 0 ? round(($present / $total) * 100, 2) : 0;
-                    
                     $students[] = [
                         'id' => $student->id,
-                        'user' => $student->user,
+                        'user' => [
+                            'name' => $student->user->name ?? 'Unknown'
+                        ],
                         'roll_number' => $student->roll_number,
                         'admission_number' => $student->admission_number,
-                        'present_count' => $attendanceStats->present ?? 0,
-                        'absent_count' => $attendanceStats->absent ?? 0,
-                        'late_count' => $attendanceStats->late ?? 0,
-                        'attendance_percentage' => $percentage
+                        'present_count' => 0,
+                        'absent_count' => 0,
+                        'late_count' => 0,
+                        'attendance_percentage' => 0
                     ];
                 }
                 
                 // Check if today's attendance is marked
-                $todayAttendanceMarked = ClassAttendance::where('class_room_id', $teacher->assigned_class_id)
+                $todayAttendanceMarked = \App\Models\ClassAttendance::where('class_room_id', $teacher->assigned_class_id)
                     ->where('section_id', $teacher->assigned_section_id)
                     ->whereDate('date', today())
                     ->exists();
@@ -88,200 +352,25 @@ class ClassAttendanceController extends Controller
                     'students' => $students,
                     'today_attendance_marked' => $todayAttendanceMarked
                 ];
-            }
-            
-            // Get subject assignments for regular attendance
-            $assignments = TeacherAssignment::with(['classRoom', 'section', 'subject'])
-                ->where('teacher_id', $teacher->id)
-                ->get();
-            
-            $subjectAssignments = [];
-            foreach ($assignments as $assignment) {
-                $subjectAssignments[] = [
-                    'assignment_id' => $assignment->id,
-                    'subject_id' => $assignment->subject_id,
-                    'subject_name' => $assignment->subject->name,
-                    'subject_code' => $assignment->subject->code,
-                    'class_id' => $assignment->class_room_id,
-                    'class_name' => $assignment->classRoom->name,
-                    'section_id' => $assignment->section_id,
-                    'section_name' => $assignment->section->name
-                ];
+                
+                \Log::info('classTeacherInfo created', ['info' => $classTeacherInfo]);
             }
             
             return response()->json([
                 'success' => true,
                 'data' => [
                     'is_class_teacher' => $isClassTeacher,
-                    'class_teacher_info' => $classTeacherInfo,
-                    'subject_assignments' => $subjectAssignments
+                    'class_teacher_info' => $classTeacherInfo
                 ]
             ]);
             
         } catch (\Exception $e) {
+            \Log::error('classTeacherDashboard error: ' . $e->getMessage());
+            \Log::error('Stack trace: ' . $e->getTraceAsString());
+            
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to load dashboard',
-                'error' => $e->getMessage()
-            ], 500);
-        }
-    }
-    
-    /**
-     * Mark daily class attendance (for homeroom teachers)
-     */
-    public function markClassAttendance(Request $request)
-    {
-        try {
-            $teacher = Auth::user()->teacher;
-            
-            if (!$teacher || !$teacher->is_class_teacher) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Only class teachers can mark daily attendance'
-                ], 403);
-            }
-            
-            $request->validate([
-                'date' => 'required|date',
-                'attendance' => 'required|array',
-                'attendance.*.student_id' => 'required|exists:students,id',
-                'attendance.*.status' => 'required|in:present,absent,late',
-                'attendance.*.remarks' => 'nullable|string'
-            ]);
-            
-            $date = $request->date;
-            $classId = $teacher->assigned_class_id;
-            $sectionId = $teacher->assigned_section_id;
-            
-            // Check if attendance already marked
-            $existing = ClassAttendance::where('class_room_id', $classId)
-                ->where('section_id', $sectionId)
-                ->whereDate('date', $date)
-                ->exists();
-            
-            if ($existing && !$request->edit_mode) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Attendance already marked for this date'
-                ], 422);
-            }
-            
-            DB::beginTransaction();
-            
-            // If edit mode, delete existing records first
-            if ($request->edit_mode) {
-                ClassAttendance::where('class_room_id', $classId)
-                    ->where('section_id', $sectionId)
-                    ->whereDate('date', $date)
-                    ->delete();
-            }
-            
-            foreach ($request->attendance as $record) {
-                ClassAttendance::create([
-                    'student_id' => $record['student_id'],
-                    'class_room_id' => $classId,
-                    'section_id' => $sectionId,
-                    'date' => $date,
-                    'status' => $record['status'],
-                    'marked_by' => $teacher->id,
-                    'remarks' => $record['remarks'] ?? null
-                ]);
-            }
-            
-            DB::commit();
-            
-            return response()->json([
-                'success' => true,
-                'message' => $request->edit_mode ? 'Class attendance updated successfully' : 'Class attendance marked successfully',
-                'data' => [
-                    'date' => $date,
-                    'total_students' => count($request->attendance)
-                ]
-            ]);
-            
-        } catch (\Exception $e) {
-            DB::rollBack();
-            return response()->json([
-                'success' => false,
-                'message' => 'Failed to mark attendance: ' . $e->getMessage()
-            ], 500);
-        }
-    }
-    
-    /**
-     * Get class attendance for a specific date
-     */
-    public function getClassAttendance(Request $request)
-    {
-        try {
-            $teacher = Auth::user()->teacher;
-            
-            if (!$teacher || !$teacher->is_class_teacher) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Unauthorized'
-                ], 403);
-            }
-            
-            $request->validate([
-                'date' => 'required|date'
-            ]);
-            
-            $attendance = ClassAttendance::where('class_room_id', $teacher->assigned_class_id)
-                ->where('section_id', $teacher->assigned_section_id)
-                ->whereDate('date', $request->date)
-                ->with('student.user')
-                ->get();
-            
-            return response()->json([
-                'success' => true,
-                'data' => [
-                    'date' => $request->date,
-                    'attendance' => $attendance
-                ]
-            ]);
-            
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Failed to get attendance: ' . $e->getMessage()
-            ], 500);
-        }
-    }
-    
-    /**
-     * Get student's class attendance summary
-     */
-    public function getStudentClassAttendance($studentId)
-    {
-        try {
-            $attendance = ClassAttendance::where('student_id', $studentId)
-                ->orderBy('date', 'desc')
-                ->get();
-            
-            $summary = [
-                'total_days' => $attendance->count(),
-                'present' => $attendance->where('status', 'present')->count(),
-                'absent' => $attendance->where('status', 'absent')->count(),
-                'late' => $attendance->where('status', 'late')->count(),
-                'attendance_percentage' => $attendance->count() > 0 
-                    ? round(($attendance->where('status', 'present')->count() / $attendance->count()) * 100, 2)
-                    : 0
-            ];
-            
-            return response()->json([
-                'success' => true,
-                'data' => [
-                    'records' => $attendance,
-                    'summary' => $summary
-                ]
-            ]);
-            
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Failed to get student attendance: ' . $e->getMessage()
+                'message' => $e->getMessage()
             ], 500);
         }
     }
