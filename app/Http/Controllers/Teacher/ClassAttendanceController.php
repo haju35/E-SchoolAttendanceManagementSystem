@@ -109,12 +109,12 @@ class ClassAttendanceController extends Controller
             }
             
             $request->validate([
-                'class_id' => 'required|exists:class_rooms,id',
+                'class_room_id' => 'required|exists:class_rooms,id',
                 'section_id' => 'required|exists:sections,id',
                 'date' => 'required|date'
             ]);
             
-            $classId = $request->class_id;
+            $classId = $request->class_room_id;
             $sectionId = $request->section_id;
             $date = $request->date;
             
@@ -209,7 +209,7 @@ class ClassAttendanceController extends Controller
             
             $request->validate([
                 'date' => 'required|date',
-                'class_id' => 'required|exists:class_rooms,id',
+                'class_room_id' => 'required|exists:class_rooms,id',
                 'section_id' => 'required|exists:sections,id',
                 'attendance' => 'required|array',
                 'attendance.*.student_id' => 'required|exists:students,id',
@@ -217,7 +217,7 @@ class ClassAttendanceController extends Controller
             ]);
             
             $date = $request->date;
-            $classId = $request->class_id;
+            $classId = $request->class_room_id;
             $sectionId = $request->section_id;
             
             // Delete existing records
@@ -344,7 +344,7 @@ class ClassAttendanceController extends Controller
                     ->exists();
                 
                 $classTeacherInfo = [
-                    'class_id' => $teacher->assigned_class_id,
+                    'class_room_id' => $teacher->assigned_class_id,
                     'class_name' => $classRoom->name ?? 'N/A',
                     'section_id' => $teacher->assigned_section_id,
                     'section_name' => $section->name ?? 'N/A',

@@ -26,7 +26,10 @@ return Application::configure(basePath: dirname(__DIR__))
 
             //'scopes' => \App\Http\Middleware\CheckScopes::class,
             'role' => \App\Http\Middleware\RoleMiddleware::class,
+            'permission' => \App\Http\Middleware\PermissionMiddleware::class,
         ]);
+
+
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->render(function (AuthenticationException $e, Request $request) {

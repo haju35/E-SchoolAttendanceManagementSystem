@@ -12,7 +12,6 @@ use App\Http\Controllers\Admin\TeacherController;
 use App\Http\Controllers\Admin\FamilyController;
 use App\Http\Controllers\Admin\ClassRoomController;
 use App\Http\Controllers\Admin\ClassTeacherController;
-
 use App\Http\Controllers\Admin\ClassSubjectController;
 use App\Http\Controllers\Admin\TeacherAssignmentController;
 use App\Http\Controllers\Admin\ClassAttendanceController;
@@ -63,156 +62,254 @@ Route::middleware('auth:api')->prefix('auth')->group(function () {
     Route::get('/dashboard', [LoginController::class, 'apiDashboard']);
 });
 
-// ========== ROLE-SPECIFIC DASHBOARDS ==========
-/*Route::middleware('auth:api')->group(function () {
-    Route::get('/auth/admin/dashboard', [LoginController::class, 'apiAdminDashboard'])->middleware('admin');
-    Route::get('/auth/teacher/dashboard', [LoginController::class, 'apiTeacherDashboard'])->middleware('teacher');
-    Route::get('/auth/student/dashboard', [LoginController::class, 'apiStudentDashboard'])->middleware('student');
-    Route::get('/auth/family/dashboard', [LoginController::class, 'apiFamilyDashboard'])->middleware('family');
-});*/
-
 // ========== ADMIN PANEL ==========
 Route::middleware(['auth:api', 'role:admin'])->prefix('admin')->group(function () {
+    
     // Dashboard
-    Route::get('/dashboard', [DashboardController::class, 'index']);
-    Route::post('/create', [AdminController::class, 'createAdmin']);
-    Route::get('/users', [AdminController::class, 'index']);
-    Route::post('/users', [AdminController::class, 'store']);
-    Route::post('/users/{id}/reset-password', [AdminController::class, 'resetPassword']);
-    Route::post('/users/{id}/toggle-status', [AdminController::class, 'toggleStatus']);
-    Route::delete('/users/{id}', [AdminController::class, 'destroy']); 
-    Route::get('/roles-permissions', [AdminController::class, 'rolesPermissions']);
-    Route::post('/roles', [AdminController::class, 'createRole']);
-    Route::post('/permissions', [AdminController::class, 'createPermission']);
-    Route::post('/roles/{id}/permissions', [AdminController::class, 'assignPermissionsToRole']);
-    Route::post('/users/{id}/role', [AdminController::class, 'assignRoleToUser']);
-
-    // Class Teacher Management
-    Route::get('/class-teachers', [App\Http\Controllers\Admin\ClassTeacherController::class, 'index']);
-    Route::get('/class-teachers/list', [App\Http\Controllers\Admin\ClassTeacherController::class, 'list']);
-    Route::post('/assign-class-teacher', [App\Http\Controllers\Admin\ClassTeacherController::class, 'assign']);
-    Route::delete('/class-teachers/{id}', [App\Http\Controllers\Admin\ClassTeacherController::class, 'remove']);
-
-
+    Route::get('/dashboard', [DashboardController::class, 'index'])
+        ->middleware('permission:view dashboard');
+    
+    // User Management
+    Route::get('/users', [AdminController::class, 'index'])
+        ->middleware('permission:view users');
+    Route::post('/users', [AdminController::class, 'store'])
+        ->middleware('permission:create users');
+    Route::post('/users/{id}/reset-password', [AdminController::class, 'resetPassword'])
+        ->middleware('permission:edit users');
+    Route::post('/users/{id}/toggle-status', [AdminController::class, 'toggleStatus'])
+        ->middleware('permission:edit users');
+    Route::delete('/users/{id}', [AdminController::class, 'destroy'])
+        ->middleware('permission:delete users');
+    
+    // Role & Permission Management
+    Route::get('/roles-permissions', [AdminController::class, 'rolesPermissions'])
+        ->middleware('permission:view roles');
+    Route::post('/roles', [AdminController::class, 'createRole'])
+        ->middleware('permission:create roles');
+    Route::put('/roles/{id}', [AdminController::class, 'updateRole'])
+        ->middleware('permission:edit roles');
+    Route::delete('/roles/{id}', [AdminController::class, 'deleteRole'])
+        ->middleware('permission:delete roles');
+    Route::post('/permissions', [AdminController::class, 'createPermission'])
+        ->middleware('permission:create permissions');
+    Route::post('/roles/{id}/permissions', [AdminController::class, 'assignPermissionsToRole'])
+        ->middleware('permission:manage permissions');
+    Route::post('/users/{id}/role', [AdminController::class, 'assignRoleToUser'])
+        ->middleware('permission:manage permissions');
+    Route::get('/users/{id}/permissions', [AdminController::class, 'getUserPermissions'])
+        ->middleware('permission:view users');
+    
     // Student Management
-    Route::get('/students', [StudentController::class, 'index']);
-    Route::post('/students', [StudentController::class, 'store']);
-    Route::get('/students/{id}', [StudentController::class, 'show']);
-    Route::put('/students/{id}', [StudentController::class, 'update']);
-    Route::delete('/students/{id}', [StudentController::class, 'destroy']);
-    Route::delete('/students/bulk-delete', [StudentController::class, 'bulkDelete']);
-    Route::post('/students/bulk-delete', [studentController::class, 'bulkDelete']);
-    Route::post('/students/import', [StudentController::class, 'import']);
-    Route::get('/students/export/template', [BulkImportController::class, 'studentTemplate']);
-
+    Route::get('/students', [StudentController::class, 'index'])
+        ->middleware('permission:view students');
+    Route::post('/students', [StudentController::class, 'store'])
+        ->middleware('permission:create students');
+    Route::get('/students/{id}', [StudentController::class, 'show'])
+        ->middleware('permission:view students');
+    Route::put('/students/{id}', [StudentController::class, 'update'])
+        ->middleware('permission:edit students');
+    Route::delete('/students/{id}', [StudentController::class, 'destroy'])
+        ->middleware('permission:delete students');
+    Route::post('/students/import', [StudentController::class, 'import'])
+        ->middleware('permission:import students');
+    
     // Teacher Management
-    Route::get('/teachers', [TeacherController::class, 'index']);
-    Route::post('/teachers', [TeacherController::class, 'store']);
-    Route::get('/teachers/{id}', [TeacherController::class, 'show']);
-    Route::put('/teachers/{id}', [TeacherController::class, 'update']);
-    Route::delete('/teachers/{id}', [TeacherController::class, 'destroy']);
-
+    Route::get('/teachers', [TeacherController::class, 'index'])
+        ->middleware('permission:view teachers');
+    Route::post('/teachers', [TeacherController::class, 'store'])
+        ->middleware('permission:create teachers');
+    Route::get('/teachers/{id}', [TeacherController::class, 'show'])
+        ->middleware('permission:view teachers');
+    Route::put('/teachers/{id}', [TeacherController::class, 'update'])
+        ->middleware('permission:edit teachers');
+    Route::delete('/teachers/{id}', [TeacherController::class, 'destroy'])
+        ->middleware('permission:delete teachers');
+    
     // Family Management
-    Route::get('/families', [FamilyController::class, 'index']);
-    Route::post('/families', [FamilyController::class, 'store']);
-    Route::get('/families/{id}', [FamilyController::class, 'show']);
-    Route::put('/families/{id}', [FamilyController::class, 'update']);
-    Route::delete('/families/{id}', [FamilyController::class, 'destroy']);
-
+    Route::get('/families', [FamilyController::class, 'index'])
+        ->middleware('permission:view families');
+    Route::post('/families', [FamilyController::class, 'store'])
+        ->middleware('permission:create families');
+    Route::get('/families/{id}', [FamilyController::class, 'show'])
+        ->middleware('permission:view families');
+    Route::put('/families/{id}', [FamilyController::class, 'update'])
+        ->middleware('permission:edit families');
+    Route::delete('/families/{id}', [FamilyController::class, 'destroy'])
+        ->middleware('permission:delete families');
+    
     // Class Management
-    Route::get('/classes', [ClassRoomController::class, 'index']);
-    Route::post('/classes', [ClassRoomController::class, 'store']);
-    Route::get('/classes/{id}', [ClassRoomController::class, 'show']);
-    Route::put('/classes/{id}', [ClassRoomController::class, 'update']);
-    Route::delete('/classes/{id}', [ClassRoomController::class, 'destroy']);
-
+    Route::get('/classes', [ClassRoomController::class, 'index'])
+        ->middleware('permission:view classes');
+    Route::post('/classes', [ClassRoomController::class, 'store'])
+        ->middleware('permission:create classes');
+    Route::get('/classes/{id}', [ClassRoomController::class, 'show'])
+        ->middleware('permission:view classes');
+    Route::put('/classes/{id}', [ClassRoomController::class, 'update'])
+        ->middleware('permission:edit classes');
+    Route::delete('/classes/{id}', [ClassRoomController::class, 'destroy'])
+        ->middleware('permission:delete classes');
+    
     // Section Management
-    Route::get('/sections', [SectionController::class, 'index']);
-    Route::post('/sections', [SectionController::class, 'store']);
-    Route::post('/sections/bulk', [SectionController::class, 'bulkStore']);
-    Route::get('/sections/{id}', [SectionController::class, 'show']);
-    Route::put('/sections/{id}', [SectionController::class, 'update']);
-    Route::delete('/sections/{id}', [SectionController::class, 'destroy']);
-
-
+    Route::get('/sections', [SectionController::class, 'index'])
+        ->middleware('permission:view sections');
+    Route::post('/sections', [SectionController::class, 'store'])
+        ->middleware('permission:create sections');
+    Route::put('/sections/{id}', [SectionController::class, 'update'])
+        ->middleware('permission:edit sections');
+    Route::delete('/sections/{id}', [SectionController::class, 'destroy'])
+        ->middleware('permission:delete sections');
+    
     // Subject Management
-    Route::get('/subjects', [SubjectController::class, 'index']);
-    Route::post('/subjects', [SubjectController::class, 'store']);
-    Route::get('/subjects/{id}', [SubjectController::class, 'show']);
-    Route::put('/subjects/{id}', [SubjectController::class, 'update']);
-    Route::delete('/subjects/{id}', [SubjectController::class, 'destroy']);
-
+    Route::get('/subjects', [SubjectController::class, 'index'])
+        ->middleware('permission:view subjects');
+    Route::post('/subjects', [SubjectController::class, 'store'])
+        ->middleware('permission:create subjects');
+    Route::put('/subjects/{id}', [SubjectController::class, 'update'])
+        ->middleware('permission:edit subjects');
+    Route::delete('/subjects/{id}', [SubjectController::class, 'destroy'])
+        ->middleware('permission:delete subjects');
+    
     // Academic Year Management
-    Route::get('/academic-years', [AcademicYearController::class, 'index']);
-    Route::post('/academic-years', [AcademicYearController::class, 'store']);
-    Route::get('/academic-years/{id}', [AcademicYearController::class, 'show']);
-    Route::put('/academic-years/{id}', [AcademicYearController::class, 'update']);
-    Route::delete('/academic-years/{id}', [AcademicYearController::class, 'destroy']);
-
+    Route::get('/academic-years', [AcademicYearController::class, 'index'])
+        ->middleware('permission:manage academic years');
+    Route::post('/academic-years', [AcademicYearController::class, 'store'])
+        ->middleware('permission:manage academic years');
+    Route::put('/academic-years/{id}', [AcademicYearController::class, 'update'])
+        ->middleware('permission:manage academic years');
+    Route::delete('/academic-years/{id}', [AcademicYearController::class, 'destroy'])
+        ->middleware('permission:manage academic years');
+    
     // Term Management
-    Route::get('/terms', [TermController::class, 'index']);
-    Route::post('/terms', [TermController::class, 'store']);
-    Route::get('/terms/{id}', [TermController::class, 'show']);
-    Route::put('/terms/{id}', [TermController::class, 'update']);
-    Route::delete('/terms/{id}', [TermController::class, 'destroy']);
+    Route::get('/terms', [TermController::class, 'index'])
+        ->middleware('permission:manage terms');
+    Route::post('/terms', [TermController::class, 'store'])
+        ->middleware('permission:manage terms');
+    Route::put('/terms/{id}', [TermController::class, 'update'])
+        ->middleware('permission:manage terms');
+    Route::delete('/terms/{id}', [TermController::class, 'destroy'])
+        ->middleware('permission:manage terms');
+    
+    // Attendance Reports
+    Route::get('/reports/attendance/daily', [AttendanceReportController::class, 'daily'])
+        ->middleware('permission:view attendance');
+    Route::get('/reports/attendance/monthly', [AttendanceReportController::class, 'monthly'])
+        ->middleware('permission:view attendance');
+    Route::get('/reports/attendance/student/{id}', [AttendanceReportController::class, 'byStudent'])
+        ->middleware('permission:view attendance');
+    Route::get('/reports/attendance/class/{id}', [AttendanceReportController::class, 'byClass'])
+        ->middleware('permission:view attendance');
+    
+    // Teacher Assignment
+    Route::get('/teacher-assignments', [TeacherAssignmentController::class, 'index'])
+        ->middleware('permission:view teacher assignments');
+    Route::post('/teacher-assignments', [TeacherAssignmentController::class, 'store'])
+        ->middleware('permission:create teacher assignments');
+    Route::put('/teacher-assignments/{id}', [TeacherAssignmentController::class, 'update'])
+        ->middleware('permission:edit teacher assignments');
+    Route::delete('/teacher-assignments/{id}', [TeacherAssignmentController::class, 'destroy'])
+        ->middleware('permission:delete teacher assignments');
 
-    // Reports
-    Route::get('/reports/attendance/daily', [AttendanceReportController::class, 'daily']);
-    Route::get('/reports/attendance/monthly', [AttendanceReportController::class, 'monthly']);
-    Route::get('/reports/attendance/student/{id}', [AttendanceReportController::class, 'byStudent']);
-    Route::get('/reports/attendance/class/{id}', [AttendanceReportController::class, 'byClass']);
 
-    //teacher assignment route
-    Route::get('/teacher-assignments', [TeacherAssignmentController::class, 'index']);
-    Route::post('/teacher-assignments', [TeacherAssignmentController::class, 'store']);
-    Route::get('/teacher-assignments/{id}', [TeacherAssignmentController::class, 'show']);
-    Route::put('/teacher-assignments/{id}', [TeacherAssignmentController::class, 'update']);
-    Route::delete('/teacher-assignments/{id}', [TeacherAssignmentController::class, 'destroy']);
-    Route::get('/classes/{classId}/teacher-assignments', [TeacherAssignmentController::class, 'getByClassAndSection']);
-    Route::get('/teachers/{teacherId}/assignments', [TeacherAssignmentController::class, 'getByTeacher']);
+    // Class Teacher Assignment
+    Route::get('/class-teachers', [ClassTeacherController::class, 'index']);
+    Route::get('/class-teachers/list', [ClassTeacherController::class, 'list']);
+    Route::post('/class-teachers', [ClassTeacherController::class, 'store']);      
+    Route::get('/class-teachers/{id}', [ClassTeacherController::class, 'show']);
+    Route::put('/class-teachers/{id}', [ClassTeacherController::class, 'update']);
+    Route::delete('/class-teachers/{id}', [ClassTeacherController::class, 'destroy']);
+    
 
     // System Configuration
-    Route::get('/config', [SystemConfigController::class, 'index']);
-    Route::put('/config', [SystemConfigController::class, 'update']);
-
-    // Subject assignments routes
-    Route::get('/classes/{classId}/subjects', [ClassSubjectController::class, 'getSubjects']);
-    Route::post('/classes/{classId}/subjects', [ClassSubjectController::class, 'assignSubject']);
-    Route::put('/classes/{classId}/subjects/{subjectId}', [ClassSubjectController::class, 'updateSubjectAssignment']);
-    Route::delete('/classes/{classId}/subjects/{subjectId}', [ClassSubjectController::class, 'removeSubject']);
+    Route::get('/config', [SystemConfigController::class, 'index'])
+        ->middleware('permission:manage settings');
+    Route::put('/config', [SystemConfigController::class, 'update'])
+        ->middleware('permission:manage settings');
 });
 
 // ========== TEACHER PANEL ==========
 Route::middleware(['auth:api', 'role:teacher'])->prefix('teacher')->group(function () {
-    Route::get('/dashboard', [TeacherDashboardController::class, 'index']);
-    Route::get('/attendance', [TeacherAttendanceController::class, 'index']);
-    Route::post('/attendance', [TeacherAttendanceController::class, 'store']);
-    Route::get('/attendance/{id}', [TeacherAttendanceController::class, 'show']);
-    Route::put('/attendance/{id}', [TeacherAttendanceController::class, 'update']);
-    Route::delete('/attendance/{id}', [TeacherAttendanceController::class, 'destroy']);
-    Route::get('/classes', [TeacherClassController::class, 'index']);
-    Route::get('/classes/{id}/students', [TeacherClassController::class, 'students']);
-    Route::get('/students/{id}', [TeacherStudentController::class, 'show']);
-    Route::get('/reports/attendance', [TeacherReportController::class, 'attendance']);
+
+    Route::get('/profile', [TeacherProfileController::class, 'show']);
+    Route::put('/profile', [TeacherProfileController::class, 'update']);
+    Route::post('/profile/photo', [TeacherProfileController::class, 'uploadPhoto']);
+    Route::post('/profile/change-password', [TeacherProfileController::class, 'changePassword']);
+    
+    Route::get('/dashboard', [TeacherDashboardController::class, 'index'])
+        ->middleware('permission:view dashboard');
+    
+    // Attendance Management
+    Route::get('/attendance', [TeacherAttendanceController::class, 'index'])
+        ->middleware('permission:view attendance');
+    
+    Route::post('/attendance', [TeacherAttendanceController::class, 'store'])
+        ->middleware('permission:mark attendance'); 
+    
+    Route::put('/attendance/{id}', [TeacherAttendanceController::class, 'update'])
+        ->middleware('permission:edit attendance');
+    
+    Route::delete('/attendance/{id}', [TeacherAttendanceController::class, 'destroy'])
+        ->middleware('permission:delete attendance');
+    
+    // Class Attendance
+    Route::get('/class-teacher/dashboard', [App\Http\Controllers\Teacher\ClassAttendanceController::class, 'classTeacherDashboard'])
+        ->middleware('permission:view dashboard');
+    
+    Route::get('/class-teacher/classes', [App\Http\Controllers\Teacher\ClassAttendanceController::class, 'getClassTeacherClasses'])
+        ->middleware('permission:view classes');
+    
+    Route::post('/attendance/class', [App\Http\Controllers\Teacher\ClassAttendanceController::class, 'markClassAttendance'])
+        ->middleware('permission:mark attendance');
+    
+    Route::get('/class-attendance/students', [App\Http\Controllers\Teacher\ClassAttendanceController::class, 'getClassStudents'])
+        ->middleware('permission:view students');
+    
+    Route::post('/class-attendance/mark', [App\Http\Controllers\Teacher\ClassAttendanceController::class, 'markClassAttendance'])
+        ->middleware('permission:mark attendance');
+    
+    Route::get('/class-attendance', [App\Http\Controllers\Teacher\ClassAttendanceController::class, 'getClassAttendance'])
+        ->middleware('permission:view attendance');
+    
+    Route::get('/class-attendance/student/{studentId}', [App\Http\Controllers\Teacher\ClassAttendanceController::class, 'getStudentClassAttendance'])
+        ->middleware('permission:view attendance');
+    
+    // Classes & Students
+    Route::get('/classes', [TeacherClassController::class, 'index'])
+        ->middleware('permission:view classes');
+    
+    Route::get('/classes/{id}/students', [TeacherClassController::class, 'students'])
+        ->middleware('permission:view students');
+    
+    Route::get('/students/{id}', [TeacherStudentController::class, 'show'])
+        ->middleware('permission:view students');
+    
+    // Reports
+    Route::get('/reports/attendance', [TeacherReportController::class, 'attendance'])
+        ->middleware('permission:view reports');
+    
+    // Profile
     Route::get('/profile', [TeacherProfileController::class, 'show']);
     Route::put('/profile', [TeacherProfileController::class, 'update']);
 
+    Route::post('/profile/photo', [ProfileController::class, 'uploadPhoto']);
 
-    // Class Teacher Routes (NEW)
-    Route::get('/class-teacher/dashboard', [App\Http\Controllers\Teacher\ClassAttendanceController::class, 'classTeacherDashboard']);
-    Route::get('/class-teacher/classes', [App\Http\Controllers\Teacher\ClassAttendanceController::class, 'getClassTeacherClasses']);
-    Route::post('/attendance/class', [App\Http\Controllers\Teacher\ClassAttendanceController::class, 'markClassAttendance']);
-    Route::get('/class-attendance/students', [App\Http\Controllers\Teacher\ClassAttendanceController::class, 'getClassStudents']);
-    Route::post('/class-attendance/mark', [App\Http\Controllers\Teacher\ClassAttendanceController::class, 'markClassAttendance']);
-    Route::get('/class-attendance', [App\Http\Controllers\Teacher\ClassAttendanceController::class, 'getClassAttendance']);
-    Route::get('/class-attendance/student/{studentId}', [App\Http\Controllers\Teacher\ClassAttendanceController::class, 'getStudentClassAttendance']);
+    Route::get('/profile', [ProfileController::class, 'show']);
+    Route::put('/profile', [ProfileController::class, 'update']);
+    Route::post('/profile/photo', [ProfileController::class, 'uploadPhoto']);
+    Route::post('/profile/change-password', [ProfileController::class, 'changePassword']);
 });
 
 // ========== STUDENT PANEL ==========
 Route::middleware(['auth:api', 'role:student'])->prefix('student')->group(function () {
-    Route::get('/dashboard', [StudentDashboardController::class, 'index']);
-    Route::get('/attendance', [StudentAttendanceController::class, 'index']);
-    Route::get('/attendance/summary', [StudentAttendanceController::class, 'summary']);
+    
+    Route::get('/dashboard', [StudentDashboardController::class, 'index'])
+        ->middleware('permission:view dashboard');
+    
+    Route::get('/attendance', [StudentAttendanceController::class, 'index'])
+        ->middleware('permission:view attendance');
+    
+    Route::get('/attendance/summary', [StudentAttendanceController::class, 'summary'])
+        ->middleware('permission:view attendance');
+    
     Route::get('/profile', [StudentProfileController::class, 'show']);
     Route::put('/profile', [StudentProfileController::class, 'update']);
     Route::put('/password', [StudentProfileController::class, 'updatePassword']);
@@ -221,12 +318,25 @@ Route::middleware(['auth:api', 'role:student'])->prefix('student')->group(functi
 
 // ========== FAMILY PANEL ==========
 Route::middleware(['auth:api', 'role:family'])->prefix('family')->group(function () {
-    Route::get('/dashboard', [FamilyDashboardController::class, 'index']);
-    Route::get('/children', [ChildController::class, 'index']);
-    Route::get('/children/{id}', [ChildController::class, 'show']);
-    Route::get('/children/{id}/attendance', [ChildController::class, 'attendance']);
-    Route::get('/children/{id}/summary', [ChildController::class, 'summary']);
-    Route::get('/attendance', [FamilyAttendanceController::class, 'index']);
+    
+    Route::get('/dashboard', [FamilyDashboardController::class, 'index'])
+        ->middleware('permission:view dashboard');
+    
+    Route::get('/children', [ChildController::class, 'index'])
+        ->middleware('permission:view students');
+    
+    Route::get('/children/{id}', [ChildController::class, 'show'])
+        ->middleware('permission:view students');
+    
+    Route::get('/children/{id}/attendance', [ChildController::class, 'attendance'])
+        ->middleware('permission:view attendance');
+    
+    Route::get('/children/{id}/summary', [ChildController::class, 'summary'])
+        ->middleware('permission:view attendance');
+    
+    Route::get('/attendance', [FamilyAttendanceController::class, 'index'])
+        ->middleware('permission:view attendance');
+    
     Route::get('/notifications', [FamilyNotificationController::class, 'index']);
     Route::put('/notifications/{id}/read', [FamilyNotificationController::class, 'markAsRead']);
     Route::get('/profile', [FamilyProfileController::class, 'getprofile']);

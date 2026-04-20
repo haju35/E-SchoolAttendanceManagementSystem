@@ -310,4 +310,65 @@ class AdminController extends Controller
             ], 500);
         }
     }
+
+    // Remove all permissions from a role
+    public function removeAllPermissions($id)
+    {
+        try {
+            $role = Role::findById($id, 'api');
+            $role->syncPermissions([]);
+            
+            return response()->json([
+                'message' => 'All permissions removed successfully',
+                'role' => $role->load('permissions')
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'Failed to remove permissions',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    // deleting roles
+    public function deleteRole($id)
+    {
+        try {
+            $role = Role::findById($id, 'api');
+            
+            // Prevent deleting critical system roles
+            $protectedRoles = ['admin', 'superadmin'];
+            if (in_array($role->name, $protectedRoles)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Cannot delete protected system role: ' . $role->name
+                ], 400);
+            }
+            
+            // Check if role has users assigned
+            $usersWithRole = User::role($role->name)->count();
+            if ($usersWithRole > 0) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Cannot delete role because it has ' . $usersWithRole . ' user(s) assigned. Please reassign users first.'
+                ], 400);
+            }
+            
+            $role->delete();
+            
+            // Clear permission cache
+            app()->make(\Spatie\Permission\PermissionRegistrar::class)->forgetCachedPermissions();
+            
+            return response()->json([
+                'success' => true,
+                'message' => 'Role "' . $role->name . '" deleted successfully'
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to delete role: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
 }
