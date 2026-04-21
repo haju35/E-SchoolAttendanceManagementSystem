@@ -206,4 +206,31 @@ class TeacherController extends Controller
             ], 500);
         }
     }
+
+    public function getAssignmentsCount(Request $request)
+    {
+        try {
+            $user = $request->user();
+            $teacher = $user->teacher;
+            
+            if (!$teacher) {
+                return response()->json([
+                    'success' => true,
+                    'count' => 0
+                ]);
+            }
+            
+            $count = \App\Models\TeacherAssignment::where('teacher_id', $teacher->id)->count();
+            
+            return response()->json([
+                'success' => true,
+                'count' => $count
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => true,
+                'count' => 0
+            ]);
+        }
+    }
 }

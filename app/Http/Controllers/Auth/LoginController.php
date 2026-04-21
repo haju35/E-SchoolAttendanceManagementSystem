@@ -59,65 +59,70 @@ class LoginController extends Controller
     // API Login
 
 
+// API Login
     public function apiLogin(LoginRequest $request)
-    {
-        try {
+{
+    try {
+        $user = \App\Models\User::where('email', $request->email)->first();
 
-            $user = \App\Models\User::where('email', $request->email)->first();
-
-            if (!$user || !\Illuminate\Support\Facades\Hash::check($request->password, $user->password)) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Invalid credentials'
-                ], 401);
-            }
-
-            if (!$user->is_active) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Your account is deactivated. Please contact administrator.'
-                ], 403);
-            }
-
-            $roleName = $user->getRoleNames()->first();
-            $permissions = $user->getAllPermissions()->pluck('name');
-            $isClassTeacher = false;
-            if ($roleName === 'teacher' && $user->teacher) {
-                $isClassTeacher = $user->teacher->is_class_teacher ?? false;
-            }
-
-            $tokenResult = $user->createToken('auth_token');
-
-            return response()->json([
-                'success' => true,
-                'user' => [
-                    'id' => $user->id,
-                    'name' => $user->name,
-                    'email' => $user->email,
-                    'phone' => $user->phone,
-                    'address' => $user->address,
-                    'photo' => $user->photo,
-                    'is_active' => $user->is_active,
-                    'created_at' => $user->created_at,
-                    'updated_at' => $user->updated_at,
-                    'role' => $roleName,  // ← Role added here
-                ],
-                'access_token' => $tokenResult->accessToken,
-                'role' => $roleName,  // Keep this for backward compatibility
-                'permissions' => $permissions,
-                'is_class_teacher' => $isClassTeacher,
-                'redirect' => $roleName === 'teacher' && $isClassTeacher ? 'homeroom' : $roleName, 
-            ]);
-
-        } catch (\Throwable $e) {
+        if (!$user || !\Illuminate\Support\Facades\Hash::check($request->password, $user->password)) {
             return response()->json([
                 'success' => false,
-                'error' => $e->getMessage(),
-                'line' => $e->getLine(),
-                'file' => $e->getFile()
-            ], 500);
+                'message' => 'Invalid credentials'
+            ], 401);
         }
+
+        if (!$user->is_active) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Your account is deactivated. Please contact administrator.'
+            ], 403);
+        }
+
+        $roleName = $user->getRoleNames()->first();
+        $permissions = $user->getAllPermissions()->pluck('name');
+        $isClassTeacher = false;
+        $subjectCount = 0;
+        
+        if ($roleName === 'teacher' && $user->teacher) {
+            $isClassTeacher = $user->teacher->is_class_teacher ?? false;
+            
+            // Count subject assignments for this teacher
+            $subjectCount = \App\Models\TeacherAssignment::where('teacher_id', $user->teacher->id)->count();
+        }
+
+        $tokenResult = $user->createToken('auth_token');
+
+        return response()->json([
+            'success' => true,
+            'user' => [
+                'id' => $user->id,
+                'name' => $user->name,
+                'email' => $user->email,
+                'phone' => $user->phone,
+                'address' => $user->address,
+                'photo' => $user->photo,
+                'is_active' => $user->is_active,
+                'created_at' => $user->created_at,
+                'updated_at' => $user->updated_at,
+                'role' => $roleName,
+            ],
+            'access_token' => $tokenResult->accessToken,
+            'role' => $roleName,
+            'permissions' => $permissions,
+            'is_class_teacher' => $isClassTeacher,
+            'subject_count' => $subjectCount,  // Add this
+        ]);
+
+    } catch (\Throwable $e) {
+        return response()->json([
+            'success' => false,
+            'error' => $e->getMessage(),
+            'line' => $e->getLine(),
+            'file' => $e->getFile()
+        ], 500);
     }
+}
 
     // API Logout
     public function apiLogout(Request $request)

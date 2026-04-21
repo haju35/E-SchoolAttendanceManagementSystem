@@ -16,7 +16,8 @@ class Teacher extends Model
     ];
 
     protected $casts = [
-        'joining_date' => 'date'
+        'joining_date' => 'date',
+        'is_class_teacher' => 'boolean',
     ];
 
     public function user()
@@ -72,5 +73,42 @@ class Teacher extends Model
             ->with('user')
             ->get();
     }
-    //
+    
+    public function getAllStudents()
+    {
+        $classIds = $this->assignments()->pluck('class_room_id')->unique();
+        $sectionIds = $this->assignments()->pluck('section_id')->unique();
+        
+        return Student::whereIn('current_class_id', $classIds)
+            ->whereIn('current_section_id', $sectionIds)
+            ->with('user')
+            ->get();
+    }
+
+    public function getFullProfile()
+    {
+        return [
+            'teacher' => $this,
+            'user' => $this->user,
+            'homeroom_class' => $this->assignedClass,
+            'homeroom_section' => $this->assignedSection,
+            'subject_assignments' => $this->assignments()->with(['subject', 'classRoom', 'section'])->get(),
+            'is_homeroom' => $this->is_class_teacher,
+            'total_subjects_taught' => $this->assignments()->count(),
+        ];
+    }
+
+    public function homeroomAssignments()
+    {
+        return $this->hasMany(ClassTeacher::class, 'teacher_id');
+    }
+
+    // Get active homeroom assignment
+    public function activeHomeroom()
+    {
+        return $this->hasOne(ClassTeacher::class, 'teacher_id')
+            ->where('academic_year', date('Y'))
+            ->where('is_active', true);
+    }
+ 
 }

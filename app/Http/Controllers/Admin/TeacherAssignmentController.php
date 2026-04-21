@@ -61,84 +61,81 @@ class TeacherAssignmentController extends Controller
      */
     public function store(Request $request)
     {
-        $request->validate([
-            'teacher_id' => 'required|exists:teachers,id',
-            'subject_id' => 'required|exists:subjects,id',
-            'class_room_id' => 'required|exists:class_rooms,id',
-            'section_id' => 'required|exists:sections,id',
-            'academic_year' => 'required|string|max:20'
+    $request->validate([
+        'teacher_id' => 'required|exists:teachers,id',
+        'subject_id' => 'required|exists:subjects,id',
+        'class_room_id' => 'required|exists:class_rooms,id',
+        'section_id' => 'required|exists:sections,id',
+        'academic_year' => 'required|string|regex:/^\d{4}$/|max:4'
+    ]);
+
+    // Check if assignment already exists (only once)
+    $exists = TeacherAssignment::where('teacher_id', $request->teacher_id)
+        ->where('subject_id', $request->subject_id)
+        ->where('class_room_id', $request->class_room_id)
+        ->where('section_id', $request->section_id)
+        ->where('academic_year', $request->academic_year)
+        ->exists();
+
+    if ($exists) {
+        return response()->json([
+            'success' => false,
+            'message' => 'This assignment already exists'
+        ], 422);
+    }
+
+    DB::beginTransaction();
+
+    try {
+        $assignment = TeacherAssignment::create([
+            'teacher_id' => $request->teacher_id,
+            'subject_id' => $request->subject_id,
+            'class_room_id' => $request->class_room_id,
+            'section_id' => $request->section_id,
+            'academic_year' => $request->academic_year
         ]);
 
-        // Check if assignment already exists
-        $exists = TeacherAssignment::where('teacher_id', $request->teacher_id)
-            ->where('subject_id', $request->subject_id)
-            ->where('class_room_id', $request->class_room_id)
-            ->where('section_id', $request->section_id)
-            ->where('academic_year', $request->academic_year)
-            ->exists();
+        DB::commit();
 
-        if ($exists) {
-            return response()->json([
-                'success' => false,
-                'message' => 'This teacher is already assigned to this classRoom/subject/section for the academic year'
-            ], 422);
-        }
+        return response()->json([
+            'success' => true,
+            'message' => 'Teacher assigned successfully',
+            'data' => $assignment->load(['teacher.user', 'subject', 'classRoom', 'section'])
+        ], 201);
 
-        $exists = TeacherAssignment::where('teacher_id', $request->teacher_id)
-            ->where('subject_id', $request->subject_id)
-            ->where('class_room_id', $request->class_room_id)
-            ->where('section_id', $request->section_id)
-            ->where('academic_year', $request->academic_year)
-            ->exists();
-
-        if ($exists) {
-            return response()->json([
-                'success' => false,
-                'message' => 'This assignment already exists'
-            ], 422);
-        }
-
-        DB::beginTransaction();
-
-        try {
-            $assignment = TeacherAssignment::create([
-                'teacher_id' => $request->teacher_id,
-                'subject_id' => $request->subject_id,
-                'class_room_id' => $request->class_room_id,
-                'section_id' => $request->section_id,
-                'academic_year' => $request->academic_year
-            ]);
-
-            DB::commit();
-
-            return response()->json([
-                'success' => true,
-                'message' => 'Teacher assigned successfully',
-                'data' => $assignment->load(['teacher.user', 'subject', 'classRoom', 'section'])
-            ], 201);
-
-
-        } catch (\Exception $e) {
-            DB::rollBack();
-            return response()->json([
-                'success' => false,
-                'message' => 'Failed to assign teacher',
-                'error' => $e->getMessage()
-            ], 500);
-        }
+    } catch (\Exception $e) {
+        DB::rollBack();
+        return response()->json([
+            'success' => false,
+            'message' => 'Failed to assign teacher: ' . $e->getMessage()
+        ], 500);
+    }
     }
 
     /**
      * Display the specified assignment.
      */
-    public function show(TeacherAssignment $teacherAssignment)
+    public function show($id)
     {
-        $teacherAssignment->load(['teacher.user', 'subject', 'classRoom', 'section']);
+        try {
+            $assignment = TeacherAssignment::with(['teacher.user', 'subject', 'classRoom', 'section'])
+                ->findOrFail($id);
 
-        return response()->json([
-            'success' => true,
-            'data' => $teacherAssignment
-        ]);
+            return response()->json([
+                'success' => true,
+                'data' => $assignment
+            ]);
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Assignment not found'
+            ], 404);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to fetch assignment: ' . $e->getMessage()
+            ], 500);
+        }
     }
 
     /**
@@ -156,81 +153,106 @@ class TeacherAssignmentController extends Controller
     /**
      * Update the specified assignment.
      */
-    public function update(Request $request, TeacherAssignment $teacherAssignment)
+    public function update(Request $request, $id)
     {
-        $request->validate([
-            'teacher_id' => 'sometimes|exists:teachers,id',
-            'subject_id' => 'sometimes|exists:subjects,id',
-            'class_room_id' => 'sometimes|exists:class_rooms,id',
-            'section_id' => 'sometimes|exists:sections,id',
-            'academic_year' => 'sometimes|string|max:20'
-        ]);
-
-        // Check for duplicates if changing key fields
-        if ($request->hasAny(['teacher_id', 'subject_id', 'class_room_id', 'section_id', 'academic_year'])) {
-            $exists = TeacherAssignment::where('teacher_id', $request->teacher_id ?? $teacherAssignment->teacher_id)
-                ->where('subject_id', $request->subject_id ?? $teacherAssignment->subject_id)
-                ->where('class_room_id', $request->class_room_id ?? $teacherAssignment->class_room_id)
-                ->where('section_id', $request->section_id ?? $teacherAssignment->section_id)
-                ->where('academic_year', $request->academic_year ?? $teacherAssignment->academic_year)
-                ->where('id', '!=', $teacherAssignment->id)
-                ->exists();
-
-            if ($exists) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'This assignment already exists'
-                ], 422);
-            }
-        }
-
-        DB::beginTransaction();
-
         try {
-            $teacherAssignment->update($request->only([
-                'teacher_id', 'subject_id', 'class_room_id', 'section_id', 'academic_year'
-            ]));
-
-            DB::commit();
-
-            return response()->json([
-                'success' => true,
-                'message' => 'Assignment updated successfully',
-                'data' => $teacherAssignment->fresh(['teacher.user', 'subject', 'classRoom', 'section'])
+            $teacherAssignment = TeacherAssignment::findOrFail($id);
+            
+            $request->validate([
+                'teacher_id' => 'sometimes|exists:teachers,id',
+                'subject_id' => 'sometimes|exists:subjects,id',
+                'class_room_id' => 'sometimes|exists:class_rooms,id',
+                'section_id' => 'sometimes|exists:sections,id',
+                'academic_year' => 'sometimes|string|regex:/^\d{4}$/|max:4'
             ]);
 
-        } catch (\Exception $e) {
-            DB::rollBack();
+            // Check for duplicates if changing key fields
+            if ($request->has('teacher_id') || $request->has('subject_id') || 
+                $request->has('class_room_id') || $request->has('section_id') || 
+                $request->has('academic_year')) {
+                
+                $exists = TeacherAssignment::where('teacher_id', $request->teacher_id ?? $teacherAssignment->teacher_id)
+                    ->where('subject_id', $request->subject_id ?? $teacherAssignment->subject_id)
+                    ->where('class_room_id', $request->class_room_id ?? $teacherAssignment->class_room_id)
+                    ->where('section_id', $request->section_id ?? $teacherAssignment->section_id)
+                    ->where('academic_year', $request->academic_year ?? $teacherAssignment->academic_year)
+                    ->where('id', '!=', $teacherAssignment->id)
+                    ->exists();
+
+                if ($exists) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'This assignment already exists'
+                    ], 422);
+                }
+            }
+
+            DB::beginTransaction();
+
+            try {
+                $teacherAssignment->update($request->only([
+                    'teacher_id', 'subject_id', 'class_room_id', 'section_id', 'academic_year'
+                ]));
+
+                DB::commit();
+
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Assignment updated successfully',
+                    'data' => $teacherAssignment->load(['teacher.user', 'subject', 'classRoom', 'section'])
+                ]);
+
+            } catch (\Exception $e) {
+                DB::rollBack();
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Failed to update assignment: ' . $e->getMessage()
+                ], 500);
+            }
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to update assignment',
-                'error' => $e->getMessage()
-            ], 500);
+                'message' => 'Assignment not found'
+            ], 404);
         }
     }
 
     /**
      * Remove the specified assignment.
      */
-    public function destroy(TeacherAssignment $teacherAssignment)
+    public function destroy($id)
     {
-        // Check if there are any attendance records using this assignment
-        $attendanceCount = $teacherAssignment->teacher->attendances()
-            ->where('subject_id', $teacherAssignment->subject_id)
-            ->where('class_room_id', $teacherAssignment->class_room_id)
-            ->where('section_id', $teacherAssignment->section_id)
-            ->count();
-
-        if ($attendanceCount > 0) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Cannot delete assignment with existing attendance records'
-            ], 422);
-        }
-
         DB::beginTransaction();
 
         try {
+            // Find the assignment by ID directly
+            $teacherAssignment = TeacherAssignment::find($id);
+            
+            if (!$teacherAssignment) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Assignment not found'
+                ], 404);
+            }
+
+            // Check if there are any attendance records using this assignment
+            $attendanceCount = 0;
+            
+            if ($teacherAssignment->teacher) {
+                $attendanceCount = $teacherAssignment->teacher->attendances()
+                    ->where('subject_id', $teacherAssignment->subject_id)
+                    ->where('class_room_id', $teacherAssignment->class_room_id)
+                    ->where('section_id', $teacherAssignment->section_id)
+                    ->count();
+            }
+
+            if ($attendanceCount > 0) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Cannot delete assignment with existing attendance records'
+                ], 422);
+            }
+
             $teacherAssignment->delete();
 
             DB::commit();
@@ -244,8 +266,7 @@ class TeacherAssignmentController extends Controller
             DB::rollBack();
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to delete assignment',
-                'error' => $e->getMessage()
+                'message' => 'Failed to delete assignment: ' . $e->getMessage()
             ], 500);
         }
     }
