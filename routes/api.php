@@ -16,6 +16,7 @@ use App\Http\Controllers\Admin\ClassSubjectController;
 use App\Http\Controllers\Admin\TeacherAssignmentController;
 use App\Http\Controllers\Admin\ClassAttendanceController;
 use App\Http\Controllers\Admin\SectionController;
+use App\Http\Controllers\Admin\ProfileController;
 use App\Http\Controllers\Admin\SubjectController;
 use App\Http\Controllers\Admin\AttendanceReportController;
 use App\Http\Controllers\Admin\SystemConfigController;
@@ -178,6 +179,11 @@ Route::middleware(['auth:api', 'role:admin'])->prefix('admin')->group(function (
         ->middleware('permission:manage academic years');
     Route::delete('/academic-years/{id}', [AcademicYearController::class, 'destroy'])
         ->middleware('permission:manage academic years');
+
+    Route::get('/profile', [ProfileController::class, 'getProfile']);
+    Route::put('/profile', [ProfileController::class, 'updateProfile']);
+    Route::post('/profile/photo', [ProfileController::class, 'uploadPhoto']);
+    Route::post('/profile/change-password', [ProfileController::class, 'changePassword']);
     
     // Term Management
     Route::get('/terms', [TermController::class, 'index'])
@@ -286,16 +292,6 @@ Route::middleware(['auth:api', 'role:teacher'])->prefix('teacher')->group(functi
     Route::get('/reports/attendance', [TeacherReportController::class, 'attendance'])
         ->middleware('permission:view reports');
     
-    // Profile
-    Route::get('/profile', [TeacherProfileController::class, 'show']);
-    Route::put('/profile', [TeacherProfileController::class, 'update']);
-
-    Route::post('/profile/photo', [ProfileController::class, 'uploadPhoto']);
-
-    Route::get('/profile', [ProfileController::class, 'show']);
-    Route::put('/profile', [ProfileController::class, 'update']);
-    Route::post('/profile/photo', [ProfileController::class, 'uploadPhoto']);
-    Route::post('/profile/change-password', [ProfileController::class, 'changePassword']);
 });
 
 // ========== STUDENT PANEL ==========
