@@ -13,6 +13,7 @@ use App\Http\Controllers\Admin\FamilyController;
 use App\Http\Controllers\Admin\ClassRoomController;
 use App\Http\Controllers\Admin\ClassTeacherController;
 use App\Http\Controllers\Admin\ClassSubjectController;
+use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Admin\TeacherAssignmentController;
 use App\Http\Controllers\Admin\ClassAttendanceController;
 use App\Http\Controllers\Admin\SectionController;
@@ -71,16 +72,17 @@ Route::middleware(['auth:api', 'role:admin'])->prefix('admin')->group(function (
         ->middleware('permission:view dashboard');
     
     // User Management
-    Route::get('/users', [AdminController::class, 'index'])
+    Route::get('/users', [UserController::class, 'index'])
         ->middleware('permission:view users');
-    Route::post('/users', [AdminController::class, 'store'])
+    Route::post('/users', [UserController::class, 'store'])
         ->middleware('permission:create users');
-    Route::post('/users/{id}/reset-password', [AdminController::class, 'resetPassword'])
+    Route::post('/users/{id}/reset-password', [UserController::class, 'resetPassword'])
         ->middleware('permission:edit users');
-    Route::post('/users/{id}/toggle-status', [AdminController::class, 'toggleStatus'])
+    Route::post('/users/{id}/toggle-status', [UserController::class, 'toggleStatus'])
         ->middleware('permission:edit users');
-    Route::delete('/users/{id}', [AdminController::class, 'destroy'])
+    Route::delete('/users/{id}', [UserController::class, 'destroy'])
         ->middleware('permission:delete users');
+    Route::get('/roles', [UserController::class, 'getRoles']);
     
     // Role & Permission Management
     Route::get('/roles-permissions', [AdminController::class, 'rolesPermissions'])
@@ -242,6 +244,8 @@ Route::middleware(['auth:api', 'role:teacher'])->prefix('teacher')->group(functi
     
     Route::get('/dashboard', [TeacherDashboardController::class, 'index'])
         ->middleware('permission:view dashboard');
+
+    Route::get('/students/{id}', [TeacherStudentController::class, 'show']);
     
     // Attendance Management
     Route::get('/attendance', [TeacherAttendanceController::class, 'index'])
@@ -291,6 +295,9 @@ Route::middleware(['auth:api', 'role:teacher'])->prefix('teacher')->group(functi
     // Reports
     Route::get('/reports/attendance', [TeacherReportController::class, 'attendance'])
         ->middleware('permission:view reports');
+    Route::get('/students/{id}/attendance', [TeacherStudentController::class, 'getStudentAttendance'])
+        ->middleware('permission:view attendance');
+    Route::get('/attendance/monthly-summary', [App\Http\Controllers\Teacher\ClassAttendanceController::class, 'monthlySummary']);
     
 });
 
@@ -310,6 +317,7 @@ Route::middleware(['auth:api', 'role:student'])->prefix('student')->group(functi
     Route::put('/profile', [StudentProfileController::class, 'update']);
     Route::put('/password', [StudentProfileController::class, 'updatePassword']);
     Route::post('/photo', [StudentProfileController::class, 'uploadPhoto']);
+    Route::post('/profile/change-password', [StudentProfileController::class, 'updatePassword']);
 });
 
 // ========== FAMILY PANEL ==========
@@ -337,5 +345,6 @@ Route::middleware(['auth:api', 'role:family'])->prefix('family')->group(function
     Route::put('/notifications/{id}/read', [FamilyNotificationController::class, 'markAsRead']);
     Route::get('/profile', [FamilyProfileController::class, 'getprofile']);
     Route::put('/profile', [FamilyProfileController::class, 'updateprofile']);
+    Route::post('/profile/upload-photo', [FamilyProfileController::class, 'uploadPhoto']);
     Route::put('/change-password', [FamilyProfileController::class, 'changePassword']);
 });

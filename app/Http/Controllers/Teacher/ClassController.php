@@ -58,13 +58,38 @@ class ClassController extends Controller
 
             // Check if section already exists
             if (!isset($groupedClasses[$classId]['sections'][$sectionId])) {
+                // Get total students for this section
+                $totalStudents = Student::where('current_class_id', $classId)
+                    ->where('current_section_id', $sectionId)
+                    ->count();
+                
+                // Get today's attendance percentage
+                $today = date('Y-m-d');
+                $totalAttendance = Attendance::where('class_room_id', $classId)
+                    ->where('section_id', $sectionId)
+                    ->whereDate('date', $today)
+                    ->count();
+                
+                $presentAttendance = Attendance::where('class_room_id', $classId)
+                    ->where('section_id', $sectionId)
+                    ->whereDate('date', $today)
+                    ->where('status', 'present')
+                    ->count();
+                
+                $attendancePercentage = $totalAttendance > 0 
+                    ? round(($presentAttendance / $totalAttendance) * 100) 
+                    : 0;
+                
                 $groupedClasses[$classId]['sections'][$sectionId] = [
                     'section' => [
                         'id' => $assignment->section->id,
                         'name' => $assignment->section->name,
                         'capacity' => $assignment->section->capacity,
+                        'room_number' => $assignment->section->room_number ?? null,
                     ],
-                    'subjects' => []
+                    'subjects' => [],
+                    'total_students' => $totalStudents,
+                    'today_attendance' => $attendancePercentage,
                 ];
             }
 
@@ -106,9 +131,9 @@ class ClassController extends Controller
             'section_id' => 'required|exists:sections,id'
         ]);
 
-        // Verify teacher has access to this class/section - FIX: use class_room_id
+        // Verify teacher has access to this class/section
         $hasAccess = TeacherAssignment::where('teacher_id', $teacher->id)
-            ->where('class_room_id', $classId)  // Changed from class_id to class_room_id
+            ->where('class_room_id', $classId)
             ->where('section_id', $request->section_id)
             ->exists();
 
@@ -161,7 +186,7 @@ class ClassController extends Controller
         $sectionInfo = null;
         
         $assignment = TeacherAssignment::where('teacher_id', $teacher->id)
-            ->where('class_room_id', $classId)  // Changed from class_id to class_room_id
+            ->where('class_room_id', $classId)
             ->where('section_id', $request->section_id)
             ->with(['classRoom', 'section'])
             ->first();

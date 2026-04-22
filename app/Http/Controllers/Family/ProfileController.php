@@ -6,6 +6,8 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Storage; 
+use Illuminate\Support\Facades\Log;
 
 class ProfileController extends Controller
 {
@@ -76,5 +78,37 @@ class ProfileController extends Controller
             'success' => true,
             'message' => 'Password changed successfully'
         ]);
+    }
+
+    public function uploadPhoto(Request $request)
+    {
+        $request->validate([
+            'photo' => 'required|image|mimes:jpeg,png,jpg,gif|max:2048'
+        ]);
+        
+        $user = auth()->user();
+        
+        if ($request->hasFile('photo')) {
+            $path = $request->file('photo')->store('profile-photos', 'public');
+            
+            // Delete old photo if exists
+            if ($user->photo) {
+                Storage::disk('public')->delete($user->photo);
+            }
+            
+            $user->photo = $path;
+            $user->save();
+            
+            return response()->json([
+                'success' => true,
+                'message' => 'Photo uploaded successfully',
+                'data' => ['photo' => $path]
+            ]);
+        }
+        
+        return response()->json([
+            'success' => false,
+            'message' => 'No photo file provided'
+        ], 400);
     }
 }

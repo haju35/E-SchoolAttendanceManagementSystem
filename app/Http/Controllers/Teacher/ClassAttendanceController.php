@@ -286,7 +286,6 @@ class ClassAttendanceController extends Controller
             ], 500);
         }
     }
-    // Dashboard method
     public function classTeacherDashboard()
     {
         try {
@@ -302,14 +301,6 @@ class ClassAttendanceController extends Controller
             $isClassTeacher = $teacher->is_class_teacher ?? false;
             $classTeacherInfo = null;
             
-            // Log the values for debugging
-            \Log::info('classTeacherDashboard called', [
-                'teacher_id' => $teacher->id,
-                'is_class_teacher' => $isClassTeacher,
-                'assigned_class_id' => $teacher->assigned_class_id,
-                'assigned_section_id' => $teacher->assigned_section_id
-            ]);
-            
             // If teacher is a class teacher, get the info
             if ($isClassTeacher && $teacher->assigned_class_id && $teacher->assigned_section_id) {
                 $classRoom = \App\Models\ClassRoom::find($teacher->assigned_class_id);
@@ -321,8 +312,26 @@ class ClassAttendanceController extends Controller
                     ->with('user')
                     ->get();
                 
+                // Get current academic year
+                $currentYear = date('Y');
+                $currentMonth = date('m');
+                
                 $students = [];
                 foreach ($studentsList as $student) {
+                    // Get attendance records for this student for the current month
+                    $attendances = \App\Models\ClassAttendance::where('student_id', $student->id)
+                        ->where('class_room_id', $teacher->assigned_class_id)
+                        ->where('section_id', $teacher->assigned_section_id)
+                        ->whereYear('date', $currentYear)
+                        ->whereMonth('date', $currentMonth)
+                        ->get();
+                    
+                    $presentCount = $attendances->where('status', 'present')->count();
+                    $absentCount = $attendances->where('status', 'absent')->count();
+                    $lateCount = $attendances->where('status', 'late')->count();
+                    $totalDays = $presentCount + $absentCount + $lateCount;
+                    $attendancePercentage = $totalDays > 0 ? round(($presentCount / $totalDays) * 100) : 0;
+                    
                     $students[] = [
                         'id' => $student->id,
                         'user' => [
@@ -330,10 +339,10 @@ class ClassAttendanceController extends Controller
                         ],
                         'roll_number' => $student->roll_number,
                         'admission_number' => $student->admission_number,
-                        'present_count' => 0,
-                        'absent_count' => 0,
-                        'late_count' => 0,
-                        'attendance_percentage' => 0
+                        'present_count' => $presentCount,
+                        'absent_count' => $absentCount,
+                        'late_count' => $lateCount,
+                        'attendance_percentage' => $attendancePercentage
                     ];
                 }
                 
@@ -344,7 +353,7 @@ class ClassAttendanceController extends Controller
                     ->exists();
                 
                 $classTeacherInfo = [
-                    'class_room_id' => $teacher->assigned_class_id,
+                    'class_id' => $teacher->assigned_class_id,
                     'class_name' => $classRoom->name ?? 'N/A',
                     'section_id' => $teacher->assigned_section_id,
                     'section_name' => $section->name ?? 'N/A',
@@ -352,8 +361,6 @@ class ClassAttendanceController extends Controller
                     'students' => $students,
                     'today_attendance_marked' => $todayAttendanceMarked
                 ];
-                
-                \Log::info('classTeacherInfo created', ['info' => $classTeacherInfo]);
             }
             
             return response()->json([
@@ -366,8 +373,79 @@ class ClassAttendanceController extends Controller
             
         } catch (\Exception $e) {
             \Log::error('classTeacherDashboard error: ' . $e->getMessage());
-            \Log::error('Stack trace: ' . $e->getTraceAsString());
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+   /**
+ * Get monthly attendance summary
+ */
+    public function monthlySummary(Request $request)
+    {
+        try {
+            $teacher = Auth::user()->teacher;
             
+            if (!$teacher) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Teacher not found'
+                ], 404);
+            }
+            
+            $request->validate([
+                'class_id' => 'required|exists:class_rooms,id',
+                'section_id' => 'required|exists:sections,id',
+                'year' => 'required|integer',
+                'month' => 'required|integer|between:1,12',
+            ]);
+            
+            $classId = $request->class_id;
+            $sectionId = $request->section_id;
+            $year = $request->year;
+            $month = $request->month;
+            
+            // Get students in this class/section
+            $students = Student::where('current_class_id', $classId)
+                ->where('current_section_id', $sectionId)
+                ->with('user')
+                ->get();
+            
+            $report = [];
+            foreach ($students as $student) {
+                $attendances = ClassAttendance::where('student_id', $student->id)
+                    ->where('class_room_id', $classId)
+                    ->where('section_id', $sectionId)
+                    ->whereYear('date', $year)
+                    ->whereMonth('date', $month)
+                    ->get();
+                
+                $present = $attendances->where('status', 'present')->count();
+                $absent = $attendances->where('status', 'absent')->count();
+                $late = $attendances->where('status', 'late')->count();
+                $total = $present + $absent + $late;
+                $percentage = $total > 0 ? round(($present / $total) * 100) : 0;
+                
+                $report[] = [
+                    'id' => $student->id,
+                    'name' => $student->user->name ?? 'Unknown',
+                    'roll_number' => $student->roll_number,
+                    'present' => $present,
+                    'absent' => $absent,
+                    'late' => $late,
+                    'total_days' => $total,
+                    'percentage' => $percentage
+                ];
+            }
+            
+            return response()->json([
+                'success' => true,
+                'data' => $report
+            ]);
+            
+        } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
                 'message' => $e->getMessage()
