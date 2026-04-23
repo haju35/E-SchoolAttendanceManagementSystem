@@ -4,6 +4,7 @@ namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
+use App\Models\Family;
 
 class UpdateFamilyRequest extends FormRequest
 {
@@ -15,14 +16,17 @@ class UpdateFamilyRequest extends FormRequest
     public function rules()
     {
         $familyId = $this->route('id') ?? $this->family;
+
+        $family =Family::find($familyId);
+        $userId = $family ? $family->user_id : null;
         
         return [
             'name' => 'sometimes|string|max:255',
             'email' => ['sometimes', 'string', 'email', 'max:255',
-                Rule::unique('users')->ignore($familyId, 'id')
+                Rule::unique('users', 'email')->ignore($userId)
             ],
             'phone' => ['nullable', 'string', 'max:20',
-                Rule::unique('users')->ignore($familyId, 'id')
+                Rule::unique('users', 'phone')->ignore($userId)
             ],
             'address' => 'nullable|string',
             'profile_photo' => 'nullable|image|max:2048',
