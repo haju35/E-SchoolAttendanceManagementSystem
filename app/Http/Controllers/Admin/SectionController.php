@@ -173,4 +173,5 @@ class SectionController extends Controller
             'message' => 'Section deleted and students moved successfully'
         ]);
     }
+
 }

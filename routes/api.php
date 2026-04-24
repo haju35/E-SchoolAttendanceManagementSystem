@@ -113,6 +113,8 @@ Route::middleware(['auth:api', 'role:admin'])->prefix('admin')->group(function (
         ->middleware('permission:edit students');
     Route::delete('/students/{id}', [StudentController::class, 'destroy'])
         ->middleware('permission:delete students');
+    Route::post('/students/{id}', [StudentController::class, 'destroy'])
+        ->middleware('permission:delete students');
     Route::post('/students/import', [StudentController::class, 'import'])
         ->middleware('permission:import students');
     
@@ -161,6 +163,8 @@ Route::middleware(['auth:api', 'role:admin'])->prefix('admin')->group(function (
         ->middleware('permission:edit sections');
     Route::delete('/sections/{id}', [SectionController::class, 'destroy'])
         ->middleware('permission:delete sections');
+    Route::get('/classes/{id}/sections', [SectionController::class, 'getByClass'])
+        ->middleware('permission:view sections');
     
     // Subject Management
     Route::get('/subjects', [SubjectController::class, 'index'])

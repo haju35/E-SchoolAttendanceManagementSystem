@@ -4,24 +4,28 @@ namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
+use App\Models\Teacher;
 
 class UpdateTeacherRequest extends FormRequest
 {
     public function authorize()
     {
-        return $this->user() !== null;
+        return $this->user() && $this->user()->isAdmin();
     }
 
     public function rules()
     {
-        $teacherId = $this->route('id');
+        $teacherId = $this->route('id') ?? $this->teacher;
+
+        $teacher = Teacher::find($teacherId);
+        $userId = $teacher ? $teacher->user_id : null;
         
         return [
             'name' => 'sometimes|string|max:255',
             'email' => [
                 'sometimes',
                 'email',
-                Rule::unique('users', 'email')->whereNull('deleted_at')->ignore($teacherId)
+                Rule::unique('users', 'email')->ignore($userId)
             ],
             'phone' => 'nullable|string|max:20',
             'address' => 'nullable|string',

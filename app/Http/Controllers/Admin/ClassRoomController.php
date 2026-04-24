@@ -12,7 +12,7 @@ class ClassRoomController extends Controller
      */
     public function index(Request $request)
     {
-        $classes = ClassRoom::with(['sections', 'students'])
+        $classes = ClassRoom::withCount(['sections', 'students'])
             ->when($request->search, function($query, $search) {
                 $query->where('name', 'LIKE', "%{$search}%")
                       ->orWhere('numeric_value', 'LIKE', "%{$search}%");

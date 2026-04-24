@@ -28,13 +28,15 @@ class ProfileController extends Controller
                 'address' => $user->address,
                 'occupation' => $user->occupation,
                 'emergency_contact' => $user->emergency_contact,
+                'photo' => $user->photo,
                 'students' => $user->students->map(function ($student) {
                     return [
                         'id' => $student->id,
                         'name' => $student->name,
                         'roll_number' => $student->roll_number,
                         'class_name' => $student->classRoom->name ?? '',
-                        'section_name' => $student->section->name ?? ''
+                        'section_name' => $student->section->name ?? '',
+                        'photo' => $student->photo 
                     ];
                 })
             ]
@@ -102,7 +104,8 @@ class ProfileController extends Controller
             return response()->json([
                 'success' => true,
                 'message' => 'Photo uploaded successfully',
-                'data' => ['photo' => $path]
+                'data' => ['photo' => $path,
+                'photo_url' => $fullUrl]
             ]);
         }
         
