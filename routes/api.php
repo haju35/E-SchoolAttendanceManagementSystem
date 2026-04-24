@@ -83,6 +83,8 @@ Route::middleware(['auth:api', 'role:admin'])->prefix('admin')->group(function (
     Route::delete('/users/{id}', [UserController::class, 'destroy'])
         ->middleware('permission:delete users');
     Route::get('/roles', [UserController::class, 'getRoles']);
+    Route::put('/users/{id}', [UserController::class, 'update']);
+    Route::patch('/users/{id}', [UserController::class, 'update']);
     
     // Role & Permission Management
     Route::get('/roles-permissions', [AdminController::class, 'rolesPermissions'])
