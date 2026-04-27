@@ -83,7 +83,7 @@ class ClassTeacherController extends Controller
                         'teacher_id' => $ct->teacher_id,
                         'teacher_name' => $ct->teacher->user->name ?? 'N/A',
                         'teacher_email' => $ct->teacher->user->email ?? 'N/A',
-                        'class_id' => $ct->class_room_id,
+                        'class_room_id' => $ct->class_room_id,
                         'class_name' => $ct->classRoom->name ?? 'N/A',
                         'section_id' => $ct->section_id,
                         'section_name' => $ct->section->name ?? 'N/A',
@@ -118,7 +118,7 @@ class ClassTeacherController extends Controller
         try {
             $request->validate([
                 'teacher_id' => 'required|exists:teachers,id',
-                'class_id' => 'required|exists:class_rooms,id',
+                'class_room_id' => 'required|exists:class_rooms,id',
                 'section_id' => 'required|exists:sections,id',
                 'academic_year' => 'required|string',
             ]);
@@ -127,7 +127,7 @@ class ClassTeacherController extends Controller
             
             // Check if already assigned as homeroom for the SAME class/section in this academic year
             $exists = ClassTeacher::where('teacher_id', $request->teacher_id)
-                ->where('class_room_id', $request->class_id)
+                ->where('class_room_id', $request->class_room_id)
                 ->where('section_id', $request->section_id)
                 ->where('academic_year', $request->academic_year)
                 ->exists();
@@ -241,7 +241,7 @@ class ClassTeacherController extends Controller
             
             $request->validate([
                 'teacher_id' => 'sometimes|exists:teachers,id',
-                'class_id' => 'sometimes|exists:class_rooms,id',
+                'class_room_id' => 'sometimes|exists:class_rooms,id',
                 'section_id' => 'sometimes|exists:sections,id',
                 'academic_year' => 'sometimes|string',
             ]);
