@@ -33,12 +33,11 @@ class UserController extends Controller
             }
             
             // Filter by status
-            if ($request->has('status') && $request->status !== '') {
+            if (!is_null($request->status)) {
                 $query->where('is_active', $request->status);
             }
             
             $users = $query->paginate($request->get('per_page', 10));
-            
             // Load roles for each user
             $users->getCollection()->transform(function ($user) {
                 $user->role = $user->roles->first()?->name ?? 'no role';
