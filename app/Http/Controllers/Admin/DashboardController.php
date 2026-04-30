@@ -6,8 +6,9 @@ use App\Http\Controllers\Controller;
 use App\Models\Student;
 use App\Models\Teacher;
 use App\Models\Family;
+use App\Models\Section;
 use App\Models\Attendance;
-use App\Models\ClassRoom as Classes; // Adjust based on your actual model name
+use App\Models\ClassRoom as Classes;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
@@ -22,10 +23,8 @@ class DashboardController extends Controller
             $totalTeachers = Teacher::count();
             $totalFamilies = Family::count();
             
-            // For active counts, adjust based on your actual schema
-            // If you don't have 'status' column, remove these or adjust
-            $activeStudents = $totalStudents; // Temporary fallback
-            $activeTeachers = $totalTeachers; // Temporary fallback
+            $activeStudents = $totalStudents; 
+            $activeTeachers = $totalTeachers; 
             
             // Try to get active counts if status column exists
             if (Schema::hasColumn('students', 'status')) {
@@ -176,5 +175,144 @@ class DashboardController extends Controller
                 'error' => $e->getMessage() // Include error message for debugging
             ], 500);
         }
+    }
+
+
+    // Add this method to handle the classes list endpoint
+    public function getClassesList()
+    {
+        try {
+            $classes = Classes::select('id', 'name')->orderBy('name')->get();
+            
+            return response()->json([
+                'success' => true,
+                'data' => $classes
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Error fetching classes list: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to fetch classes'
+            ], 500);
+        }
+    }
+
+    // Add this method to handle distribution analytics
+    public function getStudentDistribution()
+    {
+        try {
+            $type = request()->get('type', 'class');
+            $classId = request()->get('class_id');
+            
+            $distribution = [];
+            
+            switch ($type) {
+                case 'class':
+                    $distribution = $this->getDistributionByClass();
+                    break;
+                case 'section':
+                    $distribution = $this->getDistributionBySection($classId);
+                    break;
+                case 'gender':
+                    $distribution = $this->getDistributionByGender();
+                    break;
+                case 'grade':
+                    $distribution = $this->getDistributionByGrade();
+                    break;
+                case 'house':
+                    $distribution = $this->getDistributionByHouse();
+                    break;
+            }
+            
+            return response()->json([
+                'success' => true,
+                'data' => $distribution
+            ]);
+            
+        } catch (\Exception $e) {
+            Log::error('Error fetching student distribution: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to fetch distribution data'
+            ], 500);
+        }
+    }
+
+// Individual distribution methods (add these to your controller)
+    private function getDistributionByClass()
+    {
+        $classes = Classes::withCount('students')->get();
+        return $classes->map(function ($class) {
+            return [
+                'label' => $class->name,
+                'count' => $class->students_count
+            ];
+        })->toArray();
+    }
+
+    private function getDistributionBySection($classId = null)
+    {
+        $query = Section::withCount('students');
+        if ($classId) {
+            $query->where('class_room_id', $classId);
+        }
+        $sections = $query->get();
+        
+        return $sections->map(function ($section) {
+            return [
+                'label' => $section->name,
+                'count' => $section->students_count
+            ];
+        })->toArray();
+    }
+
+    private function getDistributionByGender()
+    {
+        $genders = Student::select('gender', DB::raw('count(*) as count'))
+            ->groupBy('gender')
+            ->get();
+        
+        return $genders->map(function ($item) {
+            return [
+                'label' => ucfirst($item->gender ?? 'Not Specified'),
+                'count' => $item->count
+            ];
+        })->toArray();
+    }
+
+    private function getDistributionByGrade()
+    {
+        if (Schema::hasColumn('students', 'grade_level')) {
+            $grades = Student::select('grade_level', DB::raw('count(*) as count'))
+                ->whereNotNull('grade_level')
+                ->groupBy('grade_level')
+                ->get();
+            
+            return $grades->map(function ($item) {
+                return [
+                    'label' => $item->grade_level,
+                    'count' => $item->count
+                ];
+            })->toArray();
+        }
+        return [];
+    }
+
+    private function getDistributionByHouse()
+    {
+        if (Schema::hasColumn('students', 'house')) {
+            $houses = Student::select('house', DB::raw('count(*) as count'))
+                ->whereNotNull('house')
+                ->groupBy('house')
+                ->get();
+            
+            return $houses->map(function ($item) {
+                return [
+                    'label' => $item->house,
+                    'count' => $item->count
+                ];
+            })->toArray();
+        }
+        return [];
     }
 }

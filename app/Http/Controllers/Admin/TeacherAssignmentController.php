@@ -316,4 +316,23 @@ class TeacherAssignmentController extends Controller
             'data' => $assignments
         ]);
     }
+
+    public function getSectionsByClass($classId)
+    {
+       try{
+            $sections = Section::where('class_room_id', $classId)
+            ->orderBy('name')
+            ->get(['id', 'name', 'capacity']);
+
+            return response()->json([
+                'success' => true,
+                'data' => $sections
+            ]);
+       } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to fetch sections: ' . $e->getMessage()
+            ], 500);    
+       }
+    }
 }

@@ -152,7 +152,7 @@ class ClassTeacherController extends Controller
             }
             
             // Check if class/section already has a homeroom teacher for this academic year
-            $classHasHomeroom = ClassTeacher::where('class_room_id', $request->class_id)
+            $classHasHomeroom = ClassTeacher::where('class_room_id', $request->class_room_id)
                 ->where('section_id', $request->section_id)
                 ->where('academic_year', $request->academic_year)
                 ->exists();
@@ -167,7 +167,7 @@ class ClassTeacherController extends Controller
             // Create the homeroom assignment
             $classTeacher = ClassTeacher::create([
                 'teacher_id' => $request->teacher_id,
-                'class_room_id' => $request->class_id,
+                'class_room_id' => $request->class_room_id,
                 'section_id' => $request->section_id,
                 'academic_year' => $request->academic_year,
                 'assigned_by' => auth()->id(),
@@ -175,7 +175,7 @@ class ClassTeacherController extends Controller
             
             // Also update the teacher's record for quick access
             $teacher->is_class_teacher = true;
-            $teacher->assigned_class_id = $request->class_id;
+            $teacher->assigned_class_id = $request->class_room_id;
             $teacher->assigned_section_id = $request->section_id;
             $teacher->save();
             
@@ -256,6 +256,8 @@ class ClassTeacherController extends Controller
                 $newTeacher->assigned_section_id = $classTeacher->section_id;
                 $newTeacher->save();
             }
+
+            $classTeacher->load(['teacher.user', 'classRoom', 'section']);
             
             return response()->json([
                 'success' => true,
@@ -423,6 +425,23 @@ class ClassTeacherController extends Controller
                 'success' => false,
                 'message' => 'Teacher not found'
             ], 404);
+        }
+    }
+
+    public function getSectionsByClass($classId)
+    {
+        try {
+            $sections = Section::where('class_room_id', $classId)->get();
+            
+            return response()->json([
+                'success' => true,
+                'data' => $sections
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to fetch sections'
+            ], 500);
         }
     }
 }

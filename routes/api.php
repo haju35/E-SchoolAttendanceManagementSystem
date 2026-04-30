@@ -70,6 +70,8 @@ Route::middleware(['auth:api', 'role:admin'])->prefix('admin')->group(function (
     // Dashboard
     Route::get('/dashboard', [DashboardController::class, 'index'])
         ->middleware('permission:view dashboard');
+    Route::get('/classes/list', [DashboardController::class, 'getClassesList']);
+    Route::get('/analytics/student-distribution', [DashboardController::class, 'getStudentDistribution']);
     
     // User Management
     Route::get('/users', [UserController::class, 'index'])
@@ -85,6 +87,8 @@ Route::middleware(['auth:api', 'role:admin'])->prefix('admin')->group(function (
     Route::get('/roles', [UserController::class, 'getRoles']);
     Route::put('/users/{id}', [UserController::class, 'update']);
     Route::patch('/users/{id}', [UserController::class, 'update']);
+
+    Route::get('/class-teachers/sections/{classId}', [ClassTeacherController::class, 'getSectionsByClass']);
     
     // Role & Permission Management
     Route::get('/roles-permissions', [AdminController::class, 'rolesPermissions'])
@@ -222,6 +226,10 @@ Route::middleware(['auth:api', 'role:admin'])->prefix('admin')->group(function (
         ->middleware('permission:edit teacher assignments');
     Route::delete('/teacher-assignments/{id}', [TeacherAssignmentController::class, 'destroy'])
         ->middleware('permission:delete teacher assignments');
+    Route::get('/classes/{classId}/sections', [TeacherAssignmentController::class, 'getSectionsByClass']);
+    
+    Route::get('/teacher-assignments/by-class/{classId}', [TeacherAssignmentController::class, 'getByClassAndSection']);
+    Route::get('/teacher-assignments/by-teacher/{teacherId}', [TeacherAssignmentController::class, 'getByTeacher']);
 
 
     // Class Teacher Assignment
